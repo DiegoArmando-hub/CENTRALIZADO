@@ -52,5 +52,41 @@
   </div>
   
   <?!= include('Scripts') ?>
+  
+  <script>
+  // Override para manejar mejor los módulos
+  function openModule(moduleName) {
+    console.log('Abriendo módulo:', moduleName);
+    const btn = event.target.closest('.module-card') || event.target;
+    App.showLoading(btn);
+    
+    google.script.run
+      .withSuccessHandler(function(result) {
+        App.hideLoading(btn);
+        console.log('Resultado del módulo:', result);
+        
+        if (result && result.success) {
+          if (result.html) {
+            // Si viene HTML, mostrarlo directamente
+            document.open();
+            document.write(result.html);
+            document.close();
+          } else {
+            App.showAlert(result.message, 'success');
+            // Aquí podrías redirigir a una URL específica del módulo
+            console.log('Módulo listo:', result.module);
+          }
+        } else {
+          App.showAlert(result?.message || 'Error desconocido al abrir módulo');
+        }
+      })
+      .withFailureHandler(function(error) {
+        App.hideLoading(btn);
+        console.error('Error abriendo módulo:', error);
+        App.showAlert('Error al cargar el módulo: ' + error.message, 'error');
+      })
+      .openModule(moduleName);
+  }
+  </script>
 </body>
 </html>

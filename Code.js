@@ -55,7 +55,7 @@ function getUserInfo() {
   return getCurrentUser();
 }
 
-// ✅ FUNCIÓN MÓDULOS
+// ✅ FUNCIÓN MÓDULOS ACTUALIZADA CON CONTROL_ASISTENCIA REAL
 function openModule(moduleName) {
   const user = getCurrentUser();
   logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName}`);
@@ -71,35 +71,71 @@ function openModuleWithIP(moduleName, clientIP) {
   return getModuleResponse(moduleName);
 }
 
-// ✅ FUNCIÓN PRIVADA PARA RESPUESTAS DE MÓDULOS
+// ✅ FUNCIÓN PRIVADA PARA RESPUESTAS DE MÓDULOS - CORREGIDA
 function getModuleResponse(moduleName) {
-  switch(moduleName) {
-    case 'CONTROL_ASISTENCIA':
-      return { 
-        success: true, 
-        message: 'Módulo Control Asistencia abierto',
-        module: 'CONTROL_ASISTENCIA'
-      };
-    case 'GESTION_ALUMNOS':
-      return { 
-        success: true, 
-        message: 'Módulo Gestión Alumnos abierto',
-        module: 'GESTION_ALUMNOS'
-      };
-    case 'SEGUIMIENTO_CURSOS':
-      return { 
-        success: true, 
-        message: 'Módulo Seguimiento Cursos abierto',
-        module: 'SEGUIMIENTO_CURSOS'
-      };
-    case 'GESTION_CURSOS':
-      return { 
-        success: true, 
-        message: 'Módulo Gestión Cursos abierto',
-        module: 'GESTION_CURSOS'
-      };
-    default:
-      throw new Error('Módulo no encontrado');
+  try {
+    switch(moduleName) {
+      case 'CONTROL_ASISTENCIA':
+        return {
+          success: true, 
+          message: 'Módulo Control Asistencia abierto',
+          module: 'CONTROL_ASISTENCIA',
+          html: renderControlAsistencia().getContent()
+        };
+      case 'GESTION_ALUMNOS':
+        return { 
+          success: true, 
+          message: 'Módulo Gestión Alumnos abierto',
+          module: 'GESTION_ALUMNOS'
+        };
+      case 'SEGUIMIENTO_CURSOS':
+        return { 
+          success: true, 
+          message: 'Módulo Seguimiento Cursos abierto',
+          module: 'SEGUIMIENTO_CURSOS'
+        };
+      case 'GESTION_CURSOS':
+        return { 
+          success: true, 
+          message: 'Módulo Gestión Cursos abierto',
+          module: 'GESTION_CURSOS'
+        };
+      default:
+        return {
+          success: false,
+          message: 'Módulo no encontrado'
+        };
+    }
+  } catch (error) {
+    console.error('Error en getModuleResponse:', error);
+    return {
+      success: false,
+      message: 'Error al cargar el módulo: ' + error.message
+    };
+  }
+}
+
+// ✅ FUNCIÓN PARA RENDERIZAR CONTROL ASISTENCIA - CORREGIDA
+function renderControlAsistencia() {
+  try {
+    const html = HtmlService.createTemplateFromFile('Modulos/ControlAsistencia/ControlAsistenciaUI')
+      .evaluate()
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .setTitle('Control de Asistencia')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    return html;
+  } catch (error) {
+    console.error('Error en renderControlAsistencia:', error);
+    // Fallback: retornar página de error
+    return HtmlService.createHtmlOutput(`
+      <html>
+        <body>
+          <h2>Error al cargar el módulo</h2>
+          <p>${error.message}</p>
+          <button onclick="window.history.back()">Volver</button>
+        </body>
+      </html>
+    `);
   }
 }
 
@@ -133,4 +169,34 @@ function getAppUrl() {
   } catch (error) {
     return 'https://script.google.com/macros/s/' + ScriptApp.getScriptId() + '/exec';
   }
+}
+
+// =======================================================
+// FUNCIONES PRINCIPALES DEL MÓDULO CONTROL_ASISTENCIA
+// =======================================================
+
+function procesarArchivoCargado(datosFormulario) {
+  return ControlAsistenciaService.procesarArchivoCargado(datosFormulario);
+}
+
+function finalizarRevisionYGuardar(
+  idCurso,
+  convocatoria,
+  datosCrudos,
+  datosProcesados,
+  alumnosSinCorreo,
+  alumnosNoAsistieronTexto,
+  observacionesTexto,
+  datosCursoFirebase
+) {
+  return ControlAsistenciaService.finalizarRevisionYGuardar(
+    idCurso,
+    convocatoria,
+    datosCrudos,
+    datosProcesados,
+    alumnosSinCorreo,
+    alumnosNoAsistieronTexto,
+    observacionesTexto,
+    datosCursoFirebase
+  );
 }

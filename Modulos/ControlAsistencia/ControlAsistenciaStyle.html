@@ -1,0 +1,499 @@
+<style>
+  /* Reset y base */
+  body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7f9;
+    color: #041D3B;
+    user-select: none;
+  }
+
+  /* Contenedor principal de la aplicación */
+  .contenedor-principal {
+    width: 90%;
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 25px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* --- Estilos para cabecera y reloj --- */
+  .cabecera-principal {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid #C6D700;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+
+  .cabecera-principal h1 {
+    color: #041D3B;
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    font-size: 24px;
+  }
+
+  .reloj-digital {
+    width: 160px;
+    color: #F1693A;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: right;
+    padding: 5px 10px;
+    border: 1px solid #C6D700;
+    border-radius: 5px;
+    background-color: #f9fff0;
+    color: #16476A;
+  }
+
+  /* --- Fin estilos cabecera --- */
+
+  /* --- Estructura flexible */
+  .grupo-flexible-campos {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+  }
+
+  .grupo-flexible-campos .grupo-entrada {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  /* Contenedor de botones de acción */
+  .contenedor-botones-accion {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+  }
+
+  .contenedor-botones-accion .boton-principal {
+    flex-grow: 1;
+  }
+
+  /* Estilos formulario */
+  .grupo-entrada {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+  }
+
+  label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+    user-select: text;
+  }
+
+  input[type="text"],
+  select,
+  input[type="file"],
+  textarea {
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+    user-select: text;
+  }
+
+  input[type="text"]:focus,
+  select:focus,
+  textarea:focus {
+    border-color: #041D3B;
+    outline: none;
+  }
+
+  input[type="file"] {
+    padding: 8px;
+    border: 1px solid #041D3B;
+    background-color: #f9f9f9;
+  }
+
+  .tabla-resultados {
+    user-select: text;
+  }
+
+  .tabla-resultados th,
+  .tabla-resultados td,
+  .tabla-resultados tr {
+    user-select: text !important;
+  }
+
+  /* Botones */
+  .boton-principal {
+    background-color: #F1693A;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+  }
+
+  .boton-principal:hover {
+    background-color: #d85a30;
+  }
+
+  .boton-principal:disabled {
+    background-color: #ff9873;
+    cursor: not-allowed;
+  }
+
+  .boton-exito {
+    background-color: #C6D700;
+    color: #041D3B;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s;
+  }
+
+  .boton-exito:hover {
+    background-color: #b0c000;
+  }
+
+  .boton-exito:disabled {
+    background-color: #e0ebb2;
+    cursor: not-allowed;
+  }
+
+  .boton-secundario {
+    background-color: #e0e0e0;
+    color: #041D3B;
+    padding: 12px 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+  }
+
+  .boton-secundario:hover {
+    background-color: #d0d0d0;
+  }
+
+  /* Tabla de Resultados */
+  .tabla-resultados {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 15px;
+  }
+
+  /* Centrar cabeceras de columnas de datos/control */
+  .tabla-resultados th:nth-child(3),
+  .tabla-resultados th:nth-child(4),
+  .tabla-resultados th:nth-child(5) {
+    text-align: center;
+  }
+
+  /* Centrar las celdas de datos (TD) de Horas Totales, Sin Correo y Revisado */
+  .tabla-resultados td:nth-child(3),
+  .tabla-resultados td:nth-child(4),
+  .tabla-resultados td:nth-child(5) {
+    text-align: center;
+  }
+
+  /* Ajuste para los checkboxes */
+  .tabla-resultados input[type="checkbox"] {
+    display: block;
+    margin: 0 auto;
+    width: 20px;
+    height: 20px;
+    transform: scale(1);
+  }
+
+  .tabla-resultados th,
+  .tabla-resultados td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+
+  .tabla-resultados th {
+    background-color: #041D3B;
+    color: white;
+    font-weight: normal;
+  }
+
+  /* Hover general para filas */
+  .tabla-resultados tbody tr:hover {
+    background-color: #eef7ff;
+    cursor: pointer;
+  }
+
+  /* Hover específico para el nombre y el ícono de expansión */
+  .tabla-resultados tbody tr td:nth-child(1),
+  .tabla-resultados tbody tr td:nth-child(2) {
+    cursor: pointer;
+  }
+
+  /* Tracking visual: filas revisadas */
+  .fila-revisada {
+    background-color: #f0f8ff;
+    text-decoration: line-through;
+    color: #777;
+    transition: background-color 0.4s;
+  }
+
+  /* Estilo mensajes carga/error */
+  .mensaje-estado {
+    text-align: center;
+    padding: 15px;
+    color: #041D3B;
+    font-weight: bold;
+    display: none;
+  }
+
+  /* Detalle alumnos expandibles */
+  .tabla-resultados .detalle-alumno {
+    padding: 6px 14px;
+    background: #f9f9f9;
+    font-size: 13px;
+    color: #333;
+  }
+
+  /* Filas especiales (Soporte, Información, Docente) */
+  .fila-especial {
+    background-color: #fff7e6;
+  }
+
+  .fila-especial:hover {
+    background-color: #ffe8b3;
+  }
+
+  .fila-caso-fortuito {
+    background-color: #ffcccc !important;
+    border-left: 4px solid #ff0000;
+    font-weight: bold;
+  }
+
+  .fila-caso-fortuito:hover {
+    background-color: #ffb3b3 !important;
+  }
+
+  /* --- ESTILOS DEL DIÁLOGO/MODAL DE ERRORES/RESULTADOS --- */
+  .dialogo-personalizado {
+    border: none;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    max-width: 450px;
+    width: 90%;
+    font-family: 'Arial', sans-serif;
+  }
+
+  .dialogo-personalizado::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .dialogo-error {
+    border-left: 5px solid #F1693A;
+    background-color: #fff0eb;
+    color: #041D3B;
+  }
+
+  .dialogo-exito {
+    border-left: 5px solid #C6D700;
+    background-color: #f5fff0;
+    color: #041D3B;
+  }
+
+  .dialogo-personalizado h3 {
+    margin-top: 0;
+    font-size: 20px;
+  }
+
+  .dialogo-personalizado a {
+    color: #041D3B;
+    font-weight: bold;
+    text-decoration: underline;
+  }
+
+  #info_adicional {
+    display: flex;
+    gap: 20px;
+    margin: 20px 0;
+  }
+
+  #info_adicional .grupo-entrada {
+    flex: 1;
+  }
+
+  /* Asegurar que las áreas de texto dentro del flexbox ocupen todo el ancho de su columna */
+  #info_adicional textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  /* Estilos para el modal de detalles del curso */
+  .modal-detalles-curso {
+    border: none;
+    padding: 0;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    max-width: 800px;
+    width: 95%;
+    font-family: 'Arial', sans-serif;
+    max-height: 90vh;
+    overflow: hidden;
+  }
+
+  .modal-detalles-curso::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .modal-contenido {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .modal-cabecera {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background-color: #041D3B;
+    color: white;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  .modal-cabecera h2 {
+    margin: 0;
+    font-size: 20px;
+    color: white;
+  }
+
+  .modal-cerrar {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.3s;
+  }
+
+  .modal-cerrar:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .modal-cuerpo {
+    padding: 25px;
+    overflow-y: auto;
+    flex-grow: 1;
+    background-color: #f8f9fa;
+  }
+
+  /* Layouts flexibles para el modal */
+  .detalles-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .fila-4-columnas {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+  }
+
+  .fila-3-columnas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+  }
+
+  .fila-2-columnas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+
+  .fila-1-columna {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .grupo-detalle {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #C6D700;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .grupo-detalle.enlace {
+    border-left-color: #F1693A;
+  }
+
+  .grupo-detalle label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #041D3B;
+    font-size: 14px;
+  }
+
+  .grupo-detalle .valor-detalle {
+    color: #333;
+    font-size: 15px;
+    word-break: break-word;
+  }
+
+  .grupo-detalle.enlace a {
+    color: #041D3B;
+    text-decoration: none;
+    font-weight: bold;
+  }
+
+  .grupo-detalle.enlace a:hover {
+    text-decoration: underline;
+    color: #F1693A;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .fila-3-columnas,
+    .fila-2-columnas {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Para que sea responsive en móviles */
+  @media (max-width: 768px) {
+    .fila-4-columnas {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .fila-4-columnas {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

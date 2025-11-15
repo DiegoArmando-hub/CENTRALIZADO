@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <title>Control Asistencias Zoom</title>
+  <?!= include('Modulos/ControlAsistencia/ControlAsistenciaStyle') ?>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <main class="contenedor-principal">
+    <header class="cabecera-principal">
+      <h1>CONTROL DE ASISTENCIAS ZOOM AULA VIRTUAL</h1>
+      <div id="relojDigital" class="reloj-digital"></div>
+    </header>
+    
+    <form id="formularioCarga" class="formulario-carga">
+      <div class="grupo-flexible-campos tres-columnas">
+        <div class="grupo-entrada">
+          <label for="courseId">ID del Curso (ej: 85/4586)</label>
+          <input type="text" id="courseId" name="courseId" placeholder="Introduce el ID del curso" required
+            oninput="this.value = this.value.replace(/[^a-zA-Z0-9/\s]/g, '')" />
+        </div>
+        <div class="grupo-entrada">
+          <label for="convocatoria">Convocatoria</label>
+          <input type="text" id="convocatoria" name="convocatoria" placeholder="Se autocompleta" disabled required />
+        </div>
+        <div class="grupo-entrada">
+          <label for="empresa">Empresa</label>
+          <input type="text" id="empresa" name="empresa" placeholder="Se autocompleta" disabled />
+        </div>
+      </div>
+
+      <div class="grupo-entrada">
+        <label for="nombreCurso">Nombre del Curso</label>
+        <textarea id="nombreCurso" name="nombreCurso" rows="2" placeholder="Se autocompleta" disabled
+          style="min-height: 70px;"></textarea>
+      </div>
+      
+      <!-- Botón para ver detalles del curso -->
+      <div style="text-align: center; margin: 15px 0;">
+        <button type="button" id="botonVerDetalles" class="boton-secundario" style="display: none;">
+          📋 Ver Detalles del Curso
+        </button>
+      </div>
+
+      <div class="grupo-entrada">
+        <label for="excelFile">Archivo Excel de Sesiones (xlsx/csv)</label>
+        <input type="file" id="excelFile" name="excelFile" accept=".xlsx, .csv" required />
+      </div>
+      
+      <div class="contenedor-botones-accion">
+        <button type="button" class="boton-secundario" id="botonLimpiar">
+          ❌ Limpiar Archivo
+        </button>
+        <button type="button" class="boton-principal" id="botonProcesar">
+          Cargar y Procesar Datos
+        </button>
+      </div>
+      
+      <p id="mensajeCarga" class="mensaje-estado" style="display:none;">Procesando archivo... por favor, espera.</p>
+    </form>
+
+    <!-- Modal para detalles del curso -->
+    <dialog id="modalDetallesCurso" class="modal-detalles-curso">
+      <div class="modal-contenido">
+        <div class="modal-cabecera">
+          <h2>📋 Detalles Completos del Curso</h2>
+          <button class="modal-cerrar" id="cerrarModalDetalles">&times;</button>
+        </div>
+        <div class="modal-cuerpo" id="contenidoModalDetalles">
+          <!-- Aquí se cargarán dinámicamente los detalles -->
+        </div>
+      </div>
+    </dialog>
+
+    <section id="seccionResultados" class="seccion-resultados" style="display:none;">
+      <h2>Resultado de Horas por Alumno</h2>
+      <table id="tablaResultados" class="tabla-resultados">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Alumno</th>
+            <th>Total Minutos</th>
+            <th>Horas Totales</th>
+            <th>Sin correo</th>
+            <th>Revisado</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      
+      <div id="info_adicional">
+        <div class="grupo-entrada">
+          <label for="alumnosNoAsistieron">Alumnos que no asisten (uno por línea):</label>
+          <textarea id="alumnosNoAsistieron" rows="4"
+            placeholder="Escribe aquí los nombres de los alumnos que no asistieron..."></textarea>
+        </div>
+
+        <div class="grupo-entrada">
+          <label for="novedadesObservaciones">Observaciones o Novedades:</label>
+          <textarea id="novedadesObservaciones" rows="4"
+            placeholder="Escribe aquí cualquier otra novedad o comentario relevante..."></textarea>
+        </div>
+      </div>
+      
+      <button class="boton-exito" id="botonFinalizarSubir" type="button">
+        ✔️ Finalizar Revisión y Cargar a Drive
+      </button>
+    </section>
+  </main>
+
+  <dialog id="customDialog" class="dialogo-personalizado">
+    <div id="dialogContent"></div>
+    <button id="closeDialog" class="boton-secundario" style="margin-top: 15px;">Aceptar</button>
+  </dialog>
+
+  <?!= include('Modulos/ControlAsistencia/ControlAsistenciaScripts') ?>
+</body>
+</html>

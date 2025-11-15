@@ -1,0 +1,766 @@
+<script>
+  (function () {
+    const campoArchivo = document.getElementById('excelFile');
+    const botonProcesar = document.getElementById('botonProcesar');
+    const mensajeCarga = document.getElementById('mensajeCarga');
+    const seccionResultados = document.getElementById('seccionResultados');
+    const cuerpoTablaResultados = document.querySelector('#tablaResultados tbody');
+    const botonLimpiar = document.getElementById('botonLimpiar');
+    const botonFinalizar = document.getElementById('botonFinalizarSubir');
+    const relojDigital = document.getElementById('relojDigital');
+
+    const courseIdInput = document.getElementById('courseId');
+    const convocatoriaInput = document.getElementById('convocatoria');
+    const nombreCursoInput = document.getElementById('nombreCurso');
+    const empresaInput = document.getElementById('empresa');
+    const alumnosNoAsistieron = document.getElementById('alumnosNoAsistieron');
+    const novedadesObservaciones = document.getElementById('novedadesObservaciones');
+
+    const customDialog = document.getElementById('customDialog');
+    const dialogContent = document.getElementById('dialogContent');
+    const closeDialogButton = document.getElementById('closeDialog');
+
+    // Variables para el modal detalles curso
+    const botonVerDetalles = document.getElementById('botonVerDetalles');
+    const modalDetallesCurso = document.getElementById('modalDetallesCurso');
+    const cerrarModalDetalles = document.getElementById('cerrarModalDetalles');
+    const contenidoModalDetalles = document.getElementById('contenidoModalDetalles');
+
+    let archivoCargado = null;
+    let datosCrudosGlobal = [];
+    let datosProcesadosGlobal = [];
+    let datosCursoCompletos = null;
+
+    /**
+     * Actualiza el reloj digital en la cabecera
+     */
+    function actualizarReloj() {
+      const ahora = new Date();
+      const opcionesFecha = { weekday: 'short', year: 'numeric', month: 'numeric', day: 'numeric' };
+      const opcionesHora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+      const fecha = ahora.toLocaleDateString('es-ES', opcionesFecha).replace(/\./g, '');
+      const hora = ahora.toLocaleTimeString('es-ES', opcionesHora);
+      if (relojDigital) relojDigital.innerHTML = `${fecha}<br>${hora}`;
+    }
+
+    /**
+     * Muestra el modal con los detalles completos del curso
+     */
+    function mostrarModalDetallesCurso() {
+      if (!modalDetallesCurso || !contenidoModalDetalles) return;
+
+      if (!datosCursoCompletos) {
+        mostrarDialogo('Error', 'No hay datos del curso disponibles.', 'error');
+        return;
+      }
+
+      const datosCurso = datosCursoCompletos;
+      let contenidoHTML = '<div class="detalles-grid">';
+
+      // FILA 1 - 4 COLUMNAS
+      contenidoHTML += '<div class="fila-4-columnas">';
+      contenidoHTML += '<div class="grupo-detalle"><label>ID del Curso</label><div class="valor-detalle">' + (courseIdInput.value || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>Convocatoria</label><div class="valor-detalle">' + (datosCurso.convocatoria || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>Empresa</label><div class="valor-detalle">' + (datosCurso.empresa || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>Centro Gestor</label><div class="valor-detalle">' + (datosCurso.centroGestor || 'Sin datos') + '</div></div>';
+      contenidoHTML += '</div>';
+
+      // FILA 2 - 1 COLUMNA
+      contenidoHTML += '<div class="fila-1-columna">';
+      contenidoHTML += '<div class="grupo-detalle"><label>Nombre del Curso</label><div class="valor-detalle">' + (datosCurso.nombreCurso || 'Sin datos') + '</div></div>';
+      contenidoHTML += '</div>';
+
+      // FILA 3 - 3 COLUMNAS
+      contenidoHTML += '<div class="fila-3-columnas">';
+      contenidoHTML += '<div class="grupo-detalle"><label>Fecha Inicio</label><div class="valor-detalle">' + (datosCurso.fechaInicio || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>Fecha 25%</label><div class="valor-detalle">' + (datosCurso.fecha25 || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>Fecha Fin</label><div class="valor-detalle">' + (datosCurso.fechaFin || 'Sin datos') + '</div></div>';
+      contenidoHTML += '</div>';
+
+      // FILA 4 - 3 COLUMNAS
+      contenidoHTML += '<div class="fila-3-columnas">';
+      contenidoHTML += '<div class="grupo-detalle"><label>Horario</label><div class="valor-detalle">' + (datosCurso.horario || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>Horas Diarias</label><div class="valor-detalle">' + (datosCurso.horasDiarias || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>HF (Horas Totales)</label><div class="valor-detalle">' + (datosCurso.hf || 'Sin datos') + '</div></div>';
+      contenidoHTML += '</div>';
+
+      // FILA 5 - 2 COLUMNAS
+      contenidoHTML += '<div class="fila-2-columnas">';
+      contenidoHTML += '<div class="grupo-detalle"><label>Docente</label><div class="valor-detalle">' + (datosCurso.docente || 'Sin datos') + '</div></div>';
+      contenidoHTML += '<div class="grupo-detalle"><label>Mail Centro</label><div class="valor-detalle">' + (datosCurso.mailCentro || 'Sin datos') + '</div></div>';
+      contenidoHTML += '</div>';
+
+      // FILA 6 - ENLACES 
+      contenidoHTML += '<div class="fila-3-columnas">';
+
+      // Enlace Aula Virtual
+      if (datosCurso.links && datosCurso.links.linkAulaVirtual && datosCurso.links.linkAulaVirtual !== 'Sin datos') {
+        let enlaceAula = datosCurso.links.linkAulaVirtual;
+        if (!enlaceAula.startsWith('http://') && !enlaceAula.startsWith('https://')) {
+          enlaceAula = 'https://' + enlaceAula;
+        }
+        contenidoHTML += '<div class="grupo-detalle enlace"><label>Enlace Aula Virtual</label><div class="valor-detalle"><a href="' + enlaceAula + '" target="_blank" rel="noopener">Ir al curso</a></div></div>';
+      } else {
+        contenidoHTML += '<div class="grupo-detalle"><label>Enlace Aula Virtual</label><div class="valor-detalle">' + (datosCurso.links ? datosCurso.links.linkAulaVirtual || 'Sin datos' : 'Sin datos') + '</div></div>';
+      }
+
+      // Enlace ERP
+      if (datosCurso.links && datosCurso.links.linkERP && datosCurso.links.linkERP !== 'Sin datos') {
+        let enlaceERP = datosCurso.links.linkERP;
+        if (!enlaceERP.startsWith('http://') && !enlaceERP.startsWith('https://')) {
+          enlaceERP = 'https://' + enlaceERP;
+        }
+        contenidoHTML += '<div class="grupo-detalle enlace"><label>Enlace ERP</label><div class="valor-detalle"><a href="' + enlaceERP + '" target="_blank" rel="noopener">Ir al ERP</a></div></div>';
+      } else {
+        contenidoHTML += '<div class="grupo-detalle"><label>Enlace ERP</label><div class="valor-detalle">' + (datosCurso.links ? datosCurso.links.linkERP || 'Sin datos' : 'Sin datos') + '</div></div>';
+      }
+
+      // Enlace Asistencias
+      if (datosCurso.links && datosCurso.links.linkAsistencias && datosCurso.links.linkAsistencias !== 'Sin datos') {
+        let enlaceAsistencias = datosCurso.links.linkAsistencias;
+        if (!enlaceAsistencias.startsWith('http://') && !enlaceAsistencias.startsWith('https://')) {
+          enlaceAsistencias = 'https://' + enlaceAsistencias;
+        }
+        contenidoHTML += '<div class="grupo-detalle enlace"><label>Enlace tabla asistencias</label><div class="valor-detalle"><a href="' + enlaceAsistencias + '" target="_blank" rel="noopener">Ir a verificar faltas</a></div></div>';
+      } else {
+        contenidoHTML += '<div class="grupo-detalle"><label>Enlace tabla asistencias</label><div class="valor-detalle">' + (datosCurso.links ? datosCurso.links.linkAsistencias || 'Sin datos' : 'Sin datos') + '</div></div>';
+      }
+
+      contenidoHTML += '</div>';
+      contenidoHTML += '</div>';
+      contenidoModalDetalles.innerHTML = contenidoHTML;
+      modalDetallesCurso.showModal();
+    }
+
+    /**
+     * Muestra diálogo modal para mensajes
+     */
+    function mostrarDialogo(titulo, contenidoHTML, tipo, onCloseCallback) {
+      if (!customDialog || !dialogContent) return;
+
+      customDialog.className = 'dialogo-personalizado';
+      dialogContent.innerHTML = '';
+
+      if (closeDialogButton) {
+        closeDialogButton.style.display = 'block';
+      }
+
+      if (tipo === 'error') {
+        customDialog.classList.add('dialogo-error');
+      } else if (tipo === 'success') {
+        customDialog.classList.add('dialogo-exito');
+      } else {
+        customDialog.classList.add('dialogo-info');
+      }
+
+      dialogContent.innerHTML = `<h3>${titulo}</h3>${contenidoHTML}`;
+      customDialog.showModal();
+
+      closeDialogButton.onclick = () => {
+        customDialog.close();
+        if (typeof onCloseCallback === 'function') {
+          onCloseCallback();
+        }
+      };
+    }
+
+    /**
+     * Muestra diálogo de confirmación para continuar
+     */
+    function mostrarDialogoConfirmacionContinuar(onConfirm, onCancel) {
+      if (!customDialog || !dialogContent) return;
+
+      const contenidoHTML = `
+        <p>¿Deseas continuar trabajando con el mismo curso o empezar con uno nuevo?</p>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+          <button id="btnMismoCurso" class="boton-principal" style="padding: 8px 16px;">Mismo Curso</button>
+          <button id="btnNuevoCurso" class="boton-secundario" style="padding: 8px 16px;">Nuevo Curso</button>
+        </div>
+      `;
+
+      customDialog.className = 'dialogo-personalizado';
+      customDialog.classList.add('dialogo-info');
+      dialogContent.innerHTML = `<h3>🔄 Continuar Trabajando</h3>${contenidoHTML}`;
+
+      if (closeDialogButton) {
+        closeDialogButton.style.display = 'none';
+      }
+
+      customDialog.showModal();
+
+      document.getElementById('btnMismoCurso').onclick = () => {
+        customDialog.close();
+        if (closeDialogButton) {
+          closeDialogButton.style.display = 'block';
+        }
+        if (typeof onConfirm === 'function') {
+          onConfirm();
+        }
+        if (botonVerDetalles) botonVerDetalles.style.display = 'inline-block';
+      };
+
+      document.getElementById('btnNuevoCurso').onclick = () => {
+        customDialog.close();
+        if (closeDialogButton) {
+          closeDialogButton.style.display = 'block';
+        }
+        if (typeof onCancel === 'function') {
+          onCancel();
+        }
+      };
+
+      closeDialogButton.onclick = () => {
+        customDialog.close();
+        if (closeDialogButton) {
+          closeDialogButton.style.display = 'block';
+        }
+        if (typeof onCancel === 'function') {
+          onCancel();
+        }
+      };
+    }
+
+    /**
+     * Manejador centralizado de errores
+     */
+    function mostrarError(error) {
+      const mensaje = error.message || error;
+
+      if (mensajeCarga) {
+        mensajeCarga.style.display = 'none';
+      }
+      seccionResultados.style.display = 'none';
+
+      mostrarDialogo(
+        '❌ Error en la Operación',
+        `<p>${mensaje}</p>`,
+        'error'
+      );
+    }
+
+    /**
+     * Limpia el formulario y reinicia el estado
+     */
+    function limpiarFormulario(mantenerCampos = false) {
+      if (!mantenerCampos) {
+        courseIdInput.value = '';
+        convocatoriaInput.value = '';
+        if (nombreCursoInput) nombreCursoInput.value = '';
+        if (empresaInput) empresaInput.value = '';
+        datosCursoCompletos = null;
+      }
+
+      if (campoArchivo) campoArchivo.value = '';
+      archivoCargado = null;
+
+      if (seccionResultados) seccionResultados.style.display = 'none';
+      if (cuerpoTablaResultados) cuerpoTablaResultados.innerHTML = '';
+
+      if (alumnosNoAsistieron) alumnosNoAsistieron.value = '';
+      if (novedadesObservaciones) novedadesObservaciones.value = '';
+
+      if (mensajeCarga) {
+        mensajeCarga.style.display = 'none';
+        mensajeCarga.textContent = 'Procesando archivo... por favor, espera.';
+      }
+
+      datosCrudosGlobal = [];
+      datosProcesadosGlobal = [];
+
+      if (botonFinalizar) {
+        botonFinalizar.disabled = false;
+        botonFinalizar.textContent = '✔️ Finalizar Revisión y Cargar a Drive';
+      }
+
+      if (botonVerDetalles) {
+        botonVerDetalles.style.display = 'none';
+      }
+    }
+
+    /**
+     * Valida si hay un archivo seleccionado
+     */
+    function validarArchivoSeleccionado() {
+      const hayArchivoEnMemoria = archivoCargado !== null;
+      const hayArchivoEnInput = campoArchivo && campoArchivo.files && campoArchivo.files.length > 0;
+
+      if (!hayArchivoEnMemoria && !hayArchivoEnInput) {
+        if (seccionResultados) seccionResultados.style.display = 'none';
+        if (cuerpoTablaResultados) cuerpoTablaResultados.innerHTML = '';
+        if (mensajeCarga) mensajeCarga.style.display = 'none';
+
+        datosCrudosGlobal = [];
+        datosProcesadosGlobal = [];
+
+        return false;
+      }
+
+      if (hayArchivoEnInput && !hayArchivoEnMemoria) {
+        archivoCargado = campoArchivo.files[0];
+      } else if (!hayArchivoEnInput && hayArchivoEnMemoria) {
+        archivoCargado = null;
+      }
+
+      return true;
+    }
+
+    /**
+     * Genera HTML de tabla de detalle
+     */
+    function generarTablaDetalleLocal(sesionesAlumno, encabezados) {
+      if (sesionesAlumno.length === 0) return '<div>No se encontraron registros de detalle.</div>';
+
+      let html = '<table border="1" style="border-collapse:collapse; width:100%; font-size: 13px;">';
+
+      const indicesAExcluir = [];
+      const encabezadosFiltrados = [];
+
+      encabezados.forEach((c, index) => {
+        if (String(c).trim() === '' || String(c) === 'null') {
+          indicesAExcluir.push(index);
+        } else {
+          encabezadosFiltrados.push(c);
+        }
+      });
+
+      html += '<thead><tr>';
+      encabezadosFiltrados.forEach(c => html += `<th style="background:#041D3B; color:white; padding:4px;">${c}</th>`);
+      html += '</tr></thead><tbody>';
+
+      sesionesAlumno.forEach(fila => {
+        html += '<tr>';
+        for (let i = 0; i < fila.length; i++) {
+          if (!indicesAExcluir.includes(i)) {
+            html += `<td style="padding:4px;">${fila[i] || ''}</td>`;
+          }
+        }
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      return html;
+    }
+
+    /**
+     * Consulta información del curso desde Firebase
+     */
+    function buscarInfoCursoPorID_Firebase(courseId) {
+      const id = courseId.trim();
+
+      // Limpiar campos básicos
+      convocatoriaInput.value = '';
+      if (nombreCursoInput) nombreCursoInput.value = '';
+      if (empresaInput) empresaInput.value = '';
+
+      if (id.length === 0) {
+        if (botonVerDetalles) botonVerDetalles.style.display = 'none';
+        datosCursoCompletos = null;
+        return;
+      }
+
+      nombreCursoInput.value = 'Buscando en base de datos...';
+      nombreCursoInput.classList.add('input-cargando');
+      if (botonVerDetalles) botonVerDetalles.style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler((resultado) => {
+          nombreCursoInput.classList.remove('input-cargando');
+          if (resultado) {
+            convocatoriaInput.value = resultado.convocatoria || 'Sin datos';
+            nombreCursoInput.value = resultado.nombreCurso || 'Sin datos';
+            if (empresaInput) empresaInput.value = resultado.empresa || 'Sin datos';
+
+            // GUARDAR LOS DATOS COMPLETOS PARA USAR EN EL MODAL
+            datosCursoCompletos = resultado;
+
+            // Mostrar botón de detalles
+            if (botonVerDetalles) botonVerDetalles.style.display = 'inline-block';
+          } else {
+            convocatoriaInput.value = 'No encontrado';
+            nombreCursoInput.value = 'ID de curso no encontrado';
+            if (botonVerDetalles) botonVerDetalles.style.display = 'none';
+            datosCursoCompletos = null;
+          }
+        })
+        .withFailureHandler((error) => {
+          nombreCursoInput.classList.remove('input-cargando');
+          if (botonVerDetalles) botonVerDetalles.style.display = 'none';
+          datosCursoCompletos = null;
+
+          const mensajeParaUsuario = error.message || 'Error desconocido al consultar Firebase.';
+          convocatoriaInput.value = '';
+          nombreCursoInput.value = 'Error al consultar';
+
+          mostrarDialogo('❌ Código no encontrado', `<p>${mensajeParaUsuario}</p>`, 'error');
+        })
+        .consultarCursoPorID(id);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (relojDigital) {
+        actualizarReloj();
+        setInterval(actualizarReloj, 1000);
+      }
+
+      // Event listeners para el modal de detalles
+      if (botonVerDetalles) {
+        botonVerDetalles.addEventListener('click', mostrarModalDetallesCurso);
+      }
+
+      if (cerrarModalDetalles) {
+        cerrarModalDetalles.addEventListener('click', () => {
+          modalDetallesCurso.close();
+        });
+      }
+
+      // Cerrar modal al hacer clic fuera del contenido
+      if (modalDetallesCurso) {
+        modalDetallesCurso.addEventListener('click', (e) => {
+          if (e.target === modalDetallesCurso) {
+            modalDetallesCurso.close();
+          }
+        });
+      }
+
+      if (courseIdInput) {
+        courseIdInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === 'Tab') {
+            event.preventDefault();
+            buscarInfoCursoPorID_Firebase(courseIdInput.value);
+            if (event.key === 'Tab') {
+              convocatoriaInput.focus();
+            }
+          }
+        });
+      }
+
+      if (botonLimpiar) {
+        botonLimpiar.addEventListener('click', () => limpiarFormulario(false));
+      }
+
+      campoArchivo.addEventListener('change', (e) => {
+        archivoCargado = e.target.files[0];
+        if (archivoCargado) {
+          mensajeCarga.style.display = 'none';
+          seccionResultados.style.display = 'none';
+          cuerpoTablaResultados.innerHTML = '';
+        } else {
+          archivoCargado = null;
+          datosCrudosGlobal = [];
+          datosProcesadosGlobal = [];
+          seccionResultados.style.display = 'none';
+          cuerpoTablaResultados.innerHTML = '';
+        }
+      });
+
+      botonProcesar.addEventListener('click', () => {
+        if (!validarArchivoSeleccionado() || !archivoCargado) {
+          mostrarDialogo('Archivo Requerido', 'Por favor, selecciona un archivo Excel/CSV antes de procesar.', 'error');
+          return;
+        }
+
+        if (!courseIdInput.value || !convocatoriaInput.value) {
+          mostrarDialogo('Campos Incompletos', 'Completa el ID del curso y la convocatoria.', 'error');
+          return;
+        }
+
+        mensajeCarga.textContent = 'Procesando archivo... por favor, espera.';
+        mensajeCarga.style.display = 'block';
+        seccionResultados.style.display = 'none';
+
+        if (archivoCargado.name.endsWith('.csv')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            enviarBackend(e.target.result, 'csv');
+          };
+          reader.readAsText(archivoCargado);
+        } else if (archivoCargado.name.endsWith('.xlsx')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const primeraHoja = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[primeraHoja];
+            const csv = XLSX.utils.sheet_to_csv(worksheet);
+            enviarBackend(csv, 'xlsx');
+          };
+          reader.readAsArrayBuffer(archivoCargado);
+        } else {
+          mostrarError({ message: "Solo se aceptan archivos .csv o .xlsx" });
+          mensajeCarga.style.display = 'none';
+        }
+      });
+
+      if (botonFinalizar) {
+        botonFinalizar.addEventListener('click', () => {
+          const idCurso = courseIdInput.value;
+          const convocatoria = convocatoriaInput.value;
+
+          if (datosCrudosGlobal.length === 0 || datosProcesadosGlobal.length === 0) {
+            mostrarDialogo('Error', 'Debe procesar un archivo antes de guardar.', 'error');
+            return;
+          }
+
+          const datosCursoFirebase = {
+            nombreCurso: nombreCursoInput.value,
+            convocatoria: convocatoriaInput.value,
+            empresa: empresaInput.value,
+            fechaInicio: datosCursoCompletos?.fechaInicio || '',
+            fechaFin: datosCursoCompletos?.fechaFin || '',
+            centroGestor: datosCursoCompletos?.centroGestor || '',
+            mailCentro: datosCursoCompletos?.mailCentro || '',
+            horario: datosCursoCompletos?.horario || '',
+            fecha25: datosCursoCompletos?.fecha25 || '',
+            docente: datosCursoCompletos?.docente || '',
+            expediente: datosCursoCompletos?.expediente || '',
+            sector: datosCursoCompletos?.sector || '',
+            hf: datosCursoCompletos?.hf || '',
+            horasDiarias: datosCursoCompletos?.horasDiarias || '',
+            accion: datosCursoCompletos?.accion || '',
+            enlaceAula: datosCursoCompletos?.enlaceAula || ''
+          };
+
+          const alumnosSinCorreo = Array.from(document.querySelectorAll('#tablaResultados tbody tr'))
+            .filter(row => row.cells.length > 1 && row.style.display !== 'none' && row.querySelector('.checkbox-sin-correo') && row.querySelector('.checkbox-sin-correo').checked)
+            .map(row => row.cells[1].textContent.trim());
+
+          const alumnosNoAsistieronTexto = alumnosNoAsistieron.value.trim();
+          const observacionesTexto = novedadesObservaciones.value.trim();
+
+          if (!idCurso || !convocatoria) {
+            mostrarDialogo('Campos Incompletos', 'Complete ID del curso y convocatoria antes de finalizar.', 'error');
+            return;
+          }
+
+          botonFinalizar.disabled = true;
+          botonFinalizar.textContent = 'Guardando... espere por favor';
+
+          google.script.run
+            .withSuccessHandler((res) => {
+              const contenidoHTML = `
+                <p>${res.mensaje}</p>
+                <p>Archivo: <a href="${res.urlArchivo}" target="_blank">Abrir archivo generado</a></p>
+                <p>Informe: <a href="${res.urlInforme}" target="_blank">Abrir informe</a></p>
+                <p>Carpeta: <a href="${res.urlCarpetaDestino}" target="_blank">Abrir carpeta en Drive</a></p>
+              `;
+
+              mostrarDialogo('✅ Archivo Guardado', contenidoHTML, 'success', () => {
+                mostrarDialogoConfirmacionContinuar(
+                  () => {
+                    limpiarFormulario(true);
+                    campoArchivo.focus();
+                  },
+                  () => {
+                    limpiarFormulario(false);
+                    courseIdInput.focus();
+                  }
+                );
+              });
+            })
+            .withFailureHandler((err) => {
+              mostrarError(err);
+              botonFinalizar.disabled = false;
+              botonFinalizar.textContent = '✔️ Finalizar Revisión y Cargar a Drive';
+            })
+            .finalizarRevisionYGuardar(
+              idCurso,
+              convocatoria,
+              datosCrudosGlobal,
+              datosProcesadosGlobal,
+              alumnosSinCorreo,
+              alumnosNoAsistieronTexto,
+              observacionesTexto,
+              datosCursoFirebase
+            );
+        });
+      }
+    });
+
+    /**
+     * Envía contenido del archivo al backend
+     */
+    function enviarBackend(texto, tipo) {
+      google.script.run
+        .withSuccessHandler(mostrarResultados)
+        .withFailureHandler(mostrarError)
+        .procesarArchivoCargado({
+          courseId: courseIdInput.value,
+          convocatoria: convocatoriaInput.value,
+          excelContent: texto,
+          filetype: tipo
+        });
+    }
+
+    /**
+     * Maneja expansión/colapso de filas de detalle
+     */
+    function alternarDetalle() {
+      const filaMain = this.parentElement;
+      const filaDetalle = filaMain.nextElementSibling;
+      const celdaExpandir = filaMain.cells[0];
+      const celdaDetalle = filaDetalle.cells[0];
+      const nombreAlumno = filaMain.cells[1].textContent;
+
+      if (filaDetalle.style.display === 'none') {
+        celdaExpandir.textContent = '-';
+        const encabezadosDetalle = datosCrudosGlobal[0];
+        const sesionesAlumno = datosCrudosGlobal.slice(1).filter(fila => (fila[2] || '').trim() === nombreAlumno.trim());
+        const detalleHTML = generarTablaDetalleLocal(sesionesAlumno, encabezadosDetalle);
+        celdaDetalle.innerHTML = detalleHTML;
+        filaDetalle.style.display = '';
+      } else {
+        celdaExpandir.textContent = '+';
+        filaDetalle.style.display = 'none';
+        celdaDetalle.innerHTML = '';
+      }
+    }
+
+    /**
+     * Muestra datos de resumen de asistencia en tabla
+     */
+    function mostrarResultados(objDatos) {
+      if (!objDatos || !objDatos.detallesCrudos || !objDatos.resumen) {
+        mostrarDialogo('Error de Datos', 'No se recibieron datos válidos del servidor.', 'error');
+        return;
+      }
+
+      datosCrudosGlobal = objDatos.detallesCrudos;
+      datosProcesadosGlobal = objDatos.resumen;
+
+      const datosResumen = objDatos.resumen;
+
+      mensajeCarga.style.display = 'none';
+      cuerpoTablaResultados.innerHTML = '';
+
+      if (!datosResumen || datosResumen.length === 0) {
+        mostrarDialogo('Sin Datos', 'No se encontraron datos válidos para procesar.', 'error');
+        seccionResultados.style.display = 'none';
+        return;
+      }
+      seccionResultados.style.display = 'block';
+
+      // CARGAR OBSERVACIONES EXISTENTES EN EL TEXTAREA
+      if (objDatos.observacionesExistentes && objDatos.observacionesExistentes.length > 0) {
+        const textoObservaciones = objDatos.observacionesExistentes.join('\n\n');
+        if (novedadesObservaciones) {
+          novedadesObservaciones.value = textoObservaciones;
+        }
+      }
+
+      // CARGAR ALUMNOS NO ASISTIERON EXISTENTES EN EL TEXTAREA
+      if (objDatos.alumnosNoAsistieronExistentes && objDatos.alumnosNoAsistieronExistentes.length > 0) {
+        if (alumnosNoAsistieron) {
+          alumnosNoAsistieron.value = objDatos.alumnosNoAsistieronExistentes;
+        }
+      }
+
+      // Mostrar mensaje informativo si se cargaron datos existentes
+      if ((objDatos.observacionesExistentes && objDatos.observacionesExistentes.length > 0) ||
+        (objDatos.alumnosNoAsistieronExistentes && objDatos.alumnosNoAsistieronExistentes.length > 0)) {
+
+        let mensaje = '<div style="text-align: left; line-height: 1.6;">';
+        mensaje += '<p>Se recuperaron datos existentes para esta fecha:</p>';
+        mensaje += '<div style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">';
+
+        if (objDatos.observacionesExistentes && objDatos.observacionesExistentes.length > 0) {
+          mensaje += '<div style="display: flex; align-items: center; margin: 8px 0;">';
+          mensaje += '<span style="margin-right: 10px;">📝</span>';
+          mensaje += '<span>Observaciones guardadas</span>';
+          mensaje += '</div>';
+        }
+        if (objDatos.alumnosNoAsistieronExistentes && objDatos.alumnosNoAsistieronExistentes.length > 0) {
+          mensaje += '<div style="display: flex; align-items: center; margin: 8px 0;">';
+          mensaje += '<span style="margin-right: 10px;">👥</span>';
+          mensaje += '<span>Alumnos que no asistieron</span>';
+          mensaje += '</div>';
+        }
+
+        mensaje += '</div>';
+        mensaje += '<p style="text-align: center; font-size: 14px; color: #666;">Puedes modificar esta información en los campos correspondientes.</p>';
+        mensaje += '</div>';
+
+        mostrarDialogo(
+          '📂 Datos Recuperados',
+          mensaje,
+          'info'
+        );
+      }
+
+      // CREAR LAS FILAS DE LA TABLA
+      datosResumen.forEach((alumno) => {
+        let filaMain = cuerpoTablaResultados.insertRow();
+
+        if (alumno.esEspecial) {
+          if (alumno.tipoEspecial === 'tipo1') {
+            // 🟡 AMARILLO: Empieza con palabras especiales
+            filaMain.classList.add('fila-especial');
+            filaMain.title = "Usuario especial (Soporte/Información/DOCENTE) - No se toma en cuenta para revisión";
+          } else if (alumno.tipoEspecial === 'tipo2') {
+            // 🔴 ROJO: Caso fortuito - DOCENTE en columnas NOMBRE/APELLIDO
+            filaMain.classList.add('fila-caso-fortuito');
+            filaMain.title = "🚨 CASO FORTUITO - Nombre normal pero columnas NOMBRE/APELLIDO contienen 'DOCENTE'";
+          }
+        }
+
+        let celdaExpandir = filaMain.insertCell();
+        celdaExpandir.textContent = '+';
+        celdaExpandir.style.cursor = 'pointer';
+        celdaExpandir.style.fontWeight = 'bold';
+        celdaExpandir.style.userSelect = 'none';
+        celdaExpandir.addEventListener('click', alternarDetalle);
+
+        let celdaNombre = filaMain.insertCell();
+        celdaNombre.textContent = alumno.nombre;
+        celdaNombre.style.cursor = 'pointer';
+        celdaNombre.style.fontWeight = 'bold';
+        celdaNombre.addEventListener('click', alternarDetalle);
+
+        let celdaMinutos = filaMain.insertCell();
+        celdaMinutos.textContent = Math.round(alumno.minutos_totales);
+
+        let celdaHoras = filaMain.insertCell();
+        celdaHoras.textContent = alumno.horas_totales;
+
+        let celdaSinCorreo = filaMain.insertCell();
+        let checkboxSinCorreo = document.createElement('input');
+        checkboxSinCorreo.type = 'checkbox';
+        checkboxSinCorreo.classList.add('checkbox-sin-correo');
+
+        if (alumno.tieneCorreo) {
+          checkboxSinCorreo.disabled = true;
+          celdaSinCorreo.title = 'Tiene correo registrado (no se puede marcar como "Sin correo").';
+        } else {
+          checkboxSinCorreo.checked = true;
+          checkboxSinCorreo.disabled = true;
+          celdaSinCorreo.title = 'No tiene correo registrado (marcado y bloqueado automáticamente).';
+        }
+
+        celdaSinCorreo.appendChild(checkboxSinCorreo);
+
+        let celdaRevisado = filaMain.insertCell();
+        let checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.addEventListener('change', function () {
+          filaMain.classList.toggle('fila-revisada', this.checked);
+        });
+        celdaRevisado.appendChild(checkbox);
+
+        celdaRevisado.style.cursor = 'pointer';
+        celdaRevisado.addEventListener('click', function (e) {
+          if (e.target === checkbox) {
+            return;
+          }
+          checkbox.checked = !checkbox.checked;
+          checkbox.dispatchEvent(new Event('change'));
+        });
+
+        let filaDetalle = cuerpoTablaResultados.insertRow();
+        filaDetalle.style.display = 'none';
+        let celdaDetalle = filaDetalle.insertCell();
+        celdaDetalle.colSpan = 6;
+        celdaDetalle.style.backgroundColor = '#f9f9f9';
+        celdaDetalle.style.fontSize = 'smaller';
+      });
+    }
+  })();
+</script>
