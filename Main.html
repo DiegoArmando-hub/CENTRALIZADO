@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Gestión Educativa</title>
+  <?!= include('Style') ?>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h1>Sistema de Gestión Educativa</h1>
+        <div class="user-info" id="userInfo">
+          Cargando información del usuario...
+        </div>
+      </div>
+      
+      <div class="card-body">
+        <div class="module-grid">
+          <div class="module-card" onclick="openModule('CONTROL_ASISTENCIA')">
+            <div class="module-icon">📊</div>
+            <h3>Control Asistencia</h3>
+            <p>Gestión de asistencia de alumnos</p>
+          </div>
+          
+          <div class="module-card" onclick="openModule('GESTION_ALUMNOS')">
+            <div class="module-icon">👨‍🎓</div>
+            <h3>Gestión Alumnos</h3>
+            <p>Administración de datos de alumnos</p>
+          </div>
+          
+          <div class="module-card" onclick="openModule('SEGUIMIENTO_CURSOS')">
+            <div class="module-icon">📚</div>
+            <h3>Seguimiento Cursos</h3>
+            <p>Seguimiento académico de cursos</p>
+          </div>
+          
+          <div class="module-card" onclick="openModule('GESTION_CURSOS')">
+            <div class="module-icon">🏫</div>
+            <h3>Gestión Cursos</h3>
+            <p>Administración de cursos y materias</p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+          <button class="btn btn-danger" onclick="handleLogout()">Cerrar Sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <?!= include('Scripts') ?>
+</body>
+</html>

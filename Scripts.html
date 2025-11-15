@@ -1,0 +1,177 @@
+<script>
+  // Utilidades globales
+  const App = {
+    showLoading: function(element) {
+      if (element) {
+        const originalText = element.innerHTML;
+        element.setAttribute('data-original-text', originalText);
+        element.innerHTML = '<div class="loading"></div>';
+        element.disabled = true;
+      }
+    },
+    
+    hideLoading: function(element) {
+      if (element) {
+        const originalText = element.getAttribute('data-original-text');
+        element.innerHTML = originalText;
+        element.disabled = false;
+      }
+    },
+    
+    showAlert: function(message, type, container) {
+      type = type || 'danger';
+      container = container || document.body;
+      
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert alert-' + type;
+      alertDiv.textContent = message;
+      
+      container.insertBefore(alertDiv, container.firstChild);
+      
+      setTimeout(function() {
+        alertDiv.remove();
+      }, 5000);
+    },
+    
+    handleError: function(error) {
+      console.error('App Error:', error);
+      this.showAlert(error.message || 'Error del sistema');
+    }
+  };
+
+  // Servicios de comunicación con Google Apps Script
+  function callServerFunction(functionName) {
+    const args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function(resolve, reject) {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        [functionName].apply(google.script.run, args);
+    });
+  }
+
+  // ✅ FUNCIÓN PARA OBTENER IP REAL
+  function getClientRealIP() {
+    return new Promise(function(resolve) {
+      // Usar servicio externo para obtener IP real
+      fetch('https://api.ipify.org?format=json')
+        .then(function(response) { return response.json(); })
+        .then(function(data) { resolve(data.ip); })
+        .catch(function() { resolve('ip-unknown'); });
+    });
+  }
+
+  // Manejo de módulos
+  function openModule(moduleName) {
+    const btn = event.target;
+    App.showLoading(btn);
+    
+    getClientRealIP()
+      .then(function(realIP) {
+        return callServerFunction('openModuleWithIP', moduleName, realIP);
+      })
+      .then(function(result) {
+        App.hideLoading(btn);
+        App.showAlert(result, 'success');
+      })
+      .catch(function(error) {
+        App.hideLoading(btn);
+        App.handleError(error);
+      });
+  }
+
+  // ✅ SOLUCIÓN DEFINITIVA - Login
+  function handleLogin(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const loginBtn = document.getElementById('loginBtn');
+    
+    if (!email || !password) {
+      App.showAlert('Por favor complete todos los campos');
+      return;
+    }
+    
+    App.showLoading(loginBtn);
+    
+    getClientRealIP()
+      .then(function(realIP) {
+        return callServerFunction('loginWithIP', email, password, realIP);
+      })
+      .then(function(result) {
+        if (result.success) {
+          return callServerFunction('getAppUrl');
+        } else {
+          App.hideLoading(loginBtn);
+          App.showAlert(result.message);
+          throw new Error('Login failed');
+        }
+      })
+      .then(function(appUrl) {
+        console.log('Redirecting to:', appUrl);
+        window.top.location.href = appUrl;
+      })
+      .catch(function(error) {
+        if (error.message !== 'Login failed') {
+          App.hideLoading(loginBtn);
+          App.handleError(error);
+        }
+      });
+  }
+
+  // ✅ SOLUCIÓN DEFINITIVA - Logout
+  function handleLogout() {
+    const logoutBtn = event.target;
+    const originalText = logoutBtn.innerHTML;
+    logoutBtn.innerHTML = 'Cerrando...';
+    logoutBtn.disabled = true;
+    
+    callServerFunction('logout')
+      .then(function() {
+        return callServerFunction('getAppUrl');
+      })
+      .then(function(appUrl) {
+        console.log('Logout redirect to:', appUrl);
+        window.top.location.href = appUrl;
+      })
+      .catch(function(error) {
+        logoutBtn.innerHTML = originalText;
+        logoutBtn.disabled = false;
+        App.handleError(error);
+      });
+  }
+
+  // User interface
+  function updateUserInfo(userInfo) {
+    const userInfoElement = document.getElementById('userInfo');
+    if (userInfoElement && userInfo) {
+      userInfoElement.innerHTML = 
+        '<strong>Usuario:</strong> ' + userInfo.name + ' (' + userInfo.alias + ') | ' +
+        '<strong>Email:</strong> ' + userInfo.email + ' | ' +
+        '<strong>Hora login:</strong> ' + new Date(userInfo.loginTime).toLocaleString();
+    }
+  }
+
+  // Inicialización
+  function initializeApp() {
+    if (document.getElementById('userInfo')) {
+      callServerFunction('getUserInfo')
+        .then(updateUserInfo)
+        .catch(function(error) {
+          console.error('Error loading user info:', error);
+        });
+    }
+    
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+      loginForm.addEventListener('submit', handleLogin);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+  } else {
+    initializeApp();
+  }
+</script>
