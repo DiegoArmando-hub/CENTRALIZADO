@@ -1,88 +1,69 @@
-function logAction(action, details, clientIP) {
+// LoggerService.gs - Versión corregida
+function logAction(action, details, userId) {
   try {
-    console.log('Guardando log - IP:', clientIP);
-    
-    const user = getCurrentUser() || { email: 'unknown' };
-    const now = new Date();
-    const timestamp = formatDateLegible(now);
+    const user = userId || Session.getEffectiveUser().getEmail();
+    const timestamp = new Date().toISOString();
+    const ip = getUserIP();
     
     const logEntry = {
       timestamp: timestamp,
-      user: user.email,
+      user: user,
       action: action,
-      details: details,
-      ip: clientIP || getClientIP(),
-      userAgent: Session.getScriptTimeZone() || 'unknown'
+      details: typeof details === 'string' ? details : JSON.stringify(details),
+      ip: ip,
+      userAgent: getUserAgent()
     };
     
-    // Log to Firebase
-    logToFirebase(logEntry);
-    
-    // Log to Sheet
+    // Guardar en sheet local
     logToSheet(logEntry);
     
+    console.log('LOG:', action, '- Usuario:', user);
+    
   } catch (error) {
-    console.error('Error en logger:', error);
+    console.error('Error en logAction:', error);
   }
 }
 
-// ✅ FUNCIÓN PARA FECHA LEGIBLE EN ESPAÑOL
-function formatDateLegible(date) {
-  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 
-                 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = meses[date.getMonth()];
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  
-  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+function getUserIP() {
+  try {
+    return Session.getTemporaryActiveUserKey() || 'unknown';
+  } catch (e) {
+    return 'unknown';
+  }
 }
 
-function logToFirebase(logEntry) {
+function getUserAgent() {
   try {
-    FirebaseService.getInstance().create('system_logs', logEntry);
-  } catch (error) {
-    console.error('Error Firebase:', error);
+    return Session.getScriptTimeZone() || 'unknown';
+  } catch (e) {
+    return 'unknown';
   }
 }
 
 function logToSheet(logEntry) {
   try {
     const config = getConfig();
-    if (!config.sheets.logs) return;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(config.sheets.logs);
     
-    const logSheet = SpreadsheetApp.openById(config.sheets.logs);
-    const sheet = logSheet.getSheets()[0];
-    
-    if (sheet.getLastRow() === 0) {
-      sheet.getRange(1, 1, 1, 5).setValues([[
-        'Timestamp', 'Usuario', 'Acción', 'Detalles', 'IP'
-      ]]);
+    if (!sheet) {
+      // Si no existe la hoja, la creamos
+      sheet = ss.insertSheet(config.sheets.logs);
+      // Configurar headers
+      sheet.getRange(1, 1, 1, 6).setValues([['Timestamp', 'Usuario', 'IP', 'Acción', 'Detalles', 'UserAgent']]);
     }
     
+    // Agregar nueva fila
     sheet.appendRow([
       logEntry.timestamp,
       logEntry.user,
+      logEntry.ip,
       logEntry.action,
       logEntry.details,
-      logEntry.ip
+      logEntry.userAgent
     ]);
     
-    console.log('Log guardado - IP:', logEntry.ip);
-    
   } catch (error) {
-    console.error('Error Sheet:', error);
-  }
-}
-
-// ✅ FUNCIÓN DE RESPALDO (cuando no hay IP del cliente)
-function getClientIP() {
-  try {
-    return Session.getTemporaryActiveUserKey();
-  } catch (e) {
-    return 'unknown';
+    console.error('Error guardando log en sheet:', error);
   }
 }

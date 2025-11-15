@@ -41,9 +41,9 @@ function loginWithIP(usuarioInput, password, clientIP) {
   const result = validateUser(usuarioInput, password);
   if (result.success) {
     // Log con IP real
-    logAction('LOGIN_SUCCESS', `Usuario ${result.user.alias} autenticado (usó: ${usuarioInput})`, clientIP);
+    logAction('LOGIN_SUCCESS', `Usuario ${result.user.alias} autenticado (usó: ${usuarioInput}) desde IP: ${clientIP}`);
   } else {
-    logAction('LOGIN_FAILED', `Intento fallido para: ${usuarioInput}`, clientIP);
+    logAction('LOGIN_FAILED', `Intento fallido para: ${usuarioInput} desde IP: ${clientIP}`);
   }
   return result;
 }
@@ -78,7 +78,7 @@ function openModule(moduleName) {
 // ✅ NUEVA FUNCIÓN CON IP
 function openModuleWithIP(moduleName, clientIP) {
   const user = getCurrentUser();
-  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName}`, clientIP);
+  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName} desde IP: ${clientIP}`);
   
   switch(moduleName) {
     case 'CONTROL_ASISTENCIA':
@@ -199,5 +199,87 @@ function getAppUrl() {
   } catch (error) {
     // Fallback si no puede obtener la URL
     return ScriptApp.getService().getUrl();
+  }
+}
+
+// ✅ CORRECCIÓN: Agregar la función logAction que falta
+function logAction(action, details, clientIP = null) {
+  try {
+    const user = getCurrentUser();
+    const userEmail = user ? user.email : 'No autenticado';
+    const timestamp = formatDateCustom(new Date()); // Usar formato personalizado
+    const ip = clientIP || getClientIP();
+    
+    const logEntry = {
+      timestamp: timestamp,
+      user: userEmail,
+      action: action,
+      details: details,
+      ip: ip
+    };
+    
+    // Guardar en sheet de logs
+    saveLogToSheet(logEntry);
+    
+    console.log('🔐 LOG:', action, '- Usuario:', userEmail, '- IP:', ip);
+    
+  } catch (error) {
+    console.error('Error en logAction:', error);
+  }
+}
+
+// ✅ NUEVA FUNCIÓN: Formatear fecha en formato 15/nov/2025 17:56:04
+function formatDateCustom(date) {
+  const day = date.getDate().toString().padStart(2, '0');
+  const monthNames = [
+    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+    'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+  ];
+  const month = monthNames[date.getMonth()];
+  const year = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+}
+
+// ✅ CORRECCIÓN: Función para obtener IP del cliente
+function getClientIP() {
+  try {
+    return Session.getTemporaryActiveUserKey() || 'unknown';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+// ✅ CORRECCIÓN: Función para guardar logs en sheet
+function saveLogToSheet(logEntry) {
+  try {
+    const config = getConfig();
+    if (!config.sheets.logs) {
+      console.log('Sheet de logs no configurada');
+      return;
+    }
+    
+    const logSheet = SpreadsheetApp.openById(config.sheets.logs);
+    const sheet = logSheet.getSheets()[0]; // Primera hoja
+    
+    // Si está vacía, agregar headers
+    if (sheet.getLastRow() === 0) {
+      sheet.getRange(1, 1, 1, 5).setValues([['Timestamp', 'Usuario', 'Acción', 'Detalles', 'IP']]);
+    }
+    
+    // Agregar nueva fila
+    sheet.appendRow([
+      logEntry.timestamp,  // Ahora en formato: 15/nov/2025 17:56:04
+      logEntry.user,
+      logEntry.action,
+      logEntry.details,
+      logEntry.ip
+    ]);
+    
+  } catch (error) {
+    console.error('Error guardando log en sheet:', error);
   }
 }
