@@ -6,8 +6,8 @@ function getConfig() {
     firebase: {
       projectId: projectId,
       collectionName: props.getProperty('FIRESTORE_COLLECTION') || 'db_cursos',
-      endpoint: `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`,
-      secret: props.getProperty('FIREBASE_SECRET')
+      endpoint: `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`
+      // NOTA: FIREBASE_SECRET se maneja directamente en FirebaseService
     },
     sheets: {
       usuarios: props.getProperty('SHEET_USUARIOS_ID'),
@@ -15,13 +15,12 @@ function getConfig() {
       parametros: props.getProperty('SHEET_PARAMETROS_ID')
     },
     app: {
-      name: props.getProperty('APP_NAME') || 'Sistema Gestión Educativa',
-      version: props.getProperty('APP_VERSION') || '1.0.0',
-      timeout: parseInt(props.getProperty('SESSION_TIMEOUT')) || 30,
+      name: 'Sistema Gestión Educativa Centralizado',
+      version: '2.0.0',
+      timeout: 30,
       maxRetries: 3,
       delayBetweenRetries: 1000,
       maxBatchSize: 10
     }
   };
 }
-

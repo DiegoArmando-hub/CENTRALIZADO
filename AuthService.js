@@ -1,19 +1,17 @@
-// AuthService.gs - Versión corregida y funcional
-function validateUser(email, password) {
+// AuthService.gs - Versión final unificada
+function validateUser(usuarioInput, password) {
   try {
-    if (!email || !password) {
-      return { success: false, error: 'Email y contraseña son requeridos' };
+    if (!usuarioInput || !password) {
+      return { success: false, message: 'Usuario y contraseña son requeridos' };
     }
     
     const config = getConfig();
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(config.sheets.usuarios);
-    
-    if (!sheet) {
-      return { success: false, error: 'Error del sistema: No se encontró la hoja de usuarios' };
+    if (!config.sheets.usuarios) {
+      return { success: false, message: 'Sheet de usuarios no configurada' };
     }
     
-    const data = sheet.getDataRange().getValues();
+    const userSheet = SpreadsheetApp.openById(config.sheets.usuarios);
+    const data = userSheet.getDataRange().getValues();
     const headers = data[0];
     
     const emailIndex = headers.indexOf('correo');
@@ -29,11 +27,16 @@ function validateUser(email, password) {
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (row[useEmailIndex] === email && row[usePasswordIndex] === password) {
+      const userEmail = row[useEmailIndex];
+      const userAlias = row[useAliasIndex];
+      const userPassword = row[usePasswordIndex];
+      
+      // ✅ ACEPTA ALIAS O CORREO
+      if ((userEmail === usuarioInput || userAlias === usuarioInput) && userPassword === password) {
         const userData = {
-          email: email,
+          email: userEmail,
           name: row[useNameIndex] || 'Usuario',
-          alias: row[useAliasIndex] || email.split('@')[0],
+          alias: userAlias || userEmail.split('@')[0],
           loginTime: new Date().toISOString(),
           sessionId: Utilities.getUuid()
         };
@@ -41,19 +44,19 @@ function validateUser(email, password) {
         // Guardar sesión
         const sessionResult = setUserSession(userData);
         if (sessionResult.success) {
-          console.log('Login exitoso para:', email);
+          console.log('Login exitoso para:', usuarioInput);
           return { success: true, user: userData };
         } else {
-          return { success: false, error: 'Error creando sesión' };
+          return { success: false, message: 'Error creando sesión' };
         }
       }
     }
     
-    return { success: false, error: 'Credenciales inválidas' };
+    return { success: false, message: 'Credenciales incorrectas' };
     
   } catch (error) {
     console.error('Error en validateUser:', error);
-    return { success: false, error: 'Error del sistema durante la autenticación' };
+    return { success: false, message: 'Error del sistema durante la autenticación' };
   }
 }
 

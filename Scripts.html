@@ -61,9 +61,9 @@
     });
   }
 
-  // Manejo de módulos
+  // Manejo de módulos - ACTUALIZADO
   function openModule(moduleName) {
-    const btn = event.target;
+    const btn = event.target.closest('.module-card') || event.target;
     App.showLoading(btn);
     
     getClientRealIP()
@@ -72,7 +72,13 @@
       })
       .then(function(result) {
         App.hideLoading(btn);
-        App.showAlert(result, 'success');
+        if (result.success) {
+          App.showAlert(result.message, 'success');
+          // Aquí puedes redirigir al módulo específico cuando esté listo
+          console.log('Módulo accedido:', result.module);
+        } else {
+          App.showAlert(result.message || 'Error al abrir módulo');
+        }
       })
       .catch(function(error) {
         App.hideLoading(btn);
@@ -80,7 +86,7 @@
       });
   }
 
-  // ✅ SOLUCIÓN DEFINITIVA - Login
+  // ✅ SOLUCIÓN DEFINITIVA - Login CORREGIDO
   function handleLogin(event) {
     event.preventDefault();
     
@@ -104,13 +110,14 @@
           return callServerFunction('getAppUrl');
         } else {
           App.hideLoading(loginBtn);
-          App.showAlert(result.message);
+          App.showAlert(result.message || result.error);
           throw new Error('Login failed');
         }
       })
       .then(function(appUrl) {
         console.log('Redirecting to:', appUrl);
-        window.top.location.href = appUrl;
+        // ✅ CORRECCIÓN: Usar window.location en lugar de window.top.location
+        window.location.href = appUrl;
       })
       .catch(function(error) {
         if (error.message !== 'Login failed') {
@@ -120,7 +127,7 @@
       });
   }
 
-  // ✅ SOLUCIÓN DEFINITIVA - Logout
+  // ✅ SOLUCIÓN DEFINITIVA - Logout CORREGIDO
   function handleLogout() {
     const logoutBtn = event.target;
     const originalText = logoutBtn.innerHTML;
@@ -128,12 +135,17 @@
     logoutBtn.disabled = true;
     
     callServerFunction('logout')
-      .then(function() {
-        return callServerFunction('getAppUrl');
+      .then(function(result) {
+        if (result.success) {
+          return callServerFunction('getAppUrl');
+        } else {
+          throw new Error(result.error || 'Error en logout');
+        }
       })
       .then(function(appUrl) {
         console.log('Logout redirect to:', appUrl);
-        window.top.location.href = appUrl;
+        // ✅ CORRECCIÓN: Usar window.location en lugar de window.top.location
+        window.location.href = appUrl;
       })
       .catch(function(error) {
         logoutBtn.innerHTML = originalText;
