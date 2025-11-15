@@ -35,13 +35,13 @@ function validateUser(email, password) {
           name: row[useNameIndex] || 'Usuario',
           alias: row[useAliasIndex] || email.split('@')[0],
           loginTime: new Date().toISOString(),
-          sessionId: Utilities.getUuid() // ✅ ID ÚNICO POR SESIÓN
+          sessionId: Utilities.getUuid()
         };
         
         // Guardar sesión
         const sessionResult = setUserSession(userData);
         if (sessionResult.success) {
-          console.log('Login exitoso para:', email, 'Session ID:', userData.sessionId);
+          console.log('Login exitoso para:', email);
           return { success: true, user: userData };
         } else {
           return { success: false, error: 'Error creando sesión' };
@@ -66,12 +66,12 @@ function setUserSession(userData) {
       email: userData.email,
       name: userData.name,
       alias: userData.alias,
-      sessionId: userData.sessionId, // ✅ GUARDAR sessionId
+      sessionId: userData.sessionId,
       lastActivity: new Date().getTime(),
       loginTime: userData.loginTime
     };
     
-    // Guardar en cache con sessionId como clave
+    // Guardar en cache
     cache.put(userData.sessionId, JSON.stringify(sessionData), 1800); // 30 minutos
     userCache.put('current_session', userData.sessionId, 3600);
     
@@ -130,7 +130,7 @@ function logoutUser() {
       cache.remove(user.sessionId);
       userCache.remove('current_session');
       
-      console.log('Logout exitoso para:', user.email, 'Session:', user.sessionId);
+      console.log('Logout exitoso para:', user.email);
     }
     return { success: true, message: 'Sesión cerrada correctamente' };
   } catch (error) {
@@ -141,10 +141,4 @@ function logoutUser() {
 
 function isUserAuthenticated() {
   return getCurrentUser() !== null;
-}
-
-// ✅ NUEVA FUNCIÓN: Obtener sessionId actual
-function getCurrentSessionId() {
-  const user = getCurrentUser();
-  return user ? user.sessionId : null;
 }

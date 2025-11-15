@@ -41,9 +41,9 @@ function loginWithIP(usuarioInput, password, clientIP) {
   const result = validateUser(usuarioInput, password);
   if (result.success) {
     // Log con IP real
-    logAction('LOGIN_SUCCESS', `Usuario ${result.user.alias} autenticado (usó: ${usuarioInput}) desde IP: ${clientIP}`);
+    logAction('LOGIN_SUCCESS', `Usuario ${result.user.alias} autenticado (usó: ${usuarioInput})`, clientIP);
   } else {
-    logAction('LOGIN_FAILED', `Intento fallido para: ${usuarioInput} desde IP: ${clientIP}`);
+    logAction('LOGIN_FAILED', `Intento fallido para: ${usuarioInput}`, clientIP);
   }
   return result;
 }
@@ -56,16 +56,10 @@ function getUserInfo() {
   return getCurrentUser();
 }
 
-// ✅ FUNCIÓN MODIFICADA: Ahora incluye verificación de sesión
+// ✅ MANTENER función original para compatibilidad
 function openModule(moduleName) {
-  // Verificar integridad de sesión primero
-  const sessionCheck = verifySessionIntegrity();
-  if (!sessionCheck.valid) {
-    throw new Error('Problema de sesión. Por favor, vuelve a iniciar sesión.');
-  }
-  
   const user = getCurrentUser();
-  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName} (Session: ${user.sessionId})`);
+  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName}`);
   
   switch(moduleName) {
     case 'CONTROL_ASISTENCIA':
@@ -81,16 +75,10 @@ function openModule(moduleName) {
   }
 }
 
-// ✅ FUNCIÓN MODIFICADA: Ahora incluye verificación de sesión
+// ✅ NUEVA FUNCIÓN CON IP
 function openModuleWithIP(moduleName, clientIP) {
-  // Verificar integridad de sesión primero
-  const sessionCheck = verifySessionIntegrity();
-  if (!sessionCheck.valid) {
-    throw new Error('Problema de sesión. Por favor, vuelve a iniciar sesión.');
-  }
-  
   const user = getCurrentUser();
-  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName} desde IP: ${clientIP} (Session: ${user.sessionId})`);
+  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName}`, clientIP);
   
   switch(moduleName) {
     case 'CONTROL_ASISTENCIA':
@@ -171,8 +159,7 @@ function validateUser(usuarioInput, password) {
           email: userEmail,
           name: row[nameIndex] || userEmail,
           alias: userAlias || userEmail.split('@')[0],
-          loginTime: new Date().toISOString(),
-          sessionId: Utilities.getUuid() // ✅ AGREGAR sessionId ÚNICO
+          loginTime: new Date().toISOString()
         };
         
         setUserSession(userData);
@@ -199,162 +186,18 @@ function logoutUser() {
   CacheService.getScriptCache().remove('current_user');
   
   if (user) {
-    logAction('LOGOUT', `Usuario ${user.email} cerró sesión (Session: ${user.sessionId})`);
+    logAction('LOGOUT', `Usuario ${user.email} cerró sesión`);
   }
   
   return { success: true };
 }
 
+// EN Code.gs - AGREGAR ESTA FUNCIÓN (al final del archivo)
 function getAppUrl() {
   try {
     return ScriptApp.getService().getUrl();
   } catch (error) {
     // Fallback si no puede obtener la URL
     return ScriptApp.getService().getUrl();
-  }
-}
-
-// ✅ CORRECCIÓN: Agregar la función logAction que falta
-function logAction(action, details, clientIP = null) {
-  try {
-    const user = getCurrentUser();
-    const userEmail = user ? user.email : 'No autenticado';
-    const userSessionId = user ? user.sessionId : 'no-session';
-    const timestamp = formatDateCustom(new Date()); // Usar formato personalizado
-    const ip = clientIP || getClientIP();
-    
-    const logEntry = {
-      timestamp: timestamp,
-      user: userEmail,
-      sessionId: userSessionId,
-      action: action,
-      details: details,
-      ip: ip
-    };
-    
-    // Guardar en sheet de logs
-    saveLogToSheet(logEntry);
-    
-    console.log('🔐 LOG:', action, '- Usuario:', userEmail, '- Session:', userSessionId, '- IP:', ip);
-    
-  } catch (error) {
-    console.error('Error en logAction:', error);
-  }
-}
-
-// ✅ NUEVA FUNCIÓN: Formatear fecha en formato 15/nov/2025 17:56:04
-function formatDateCustom(date) {
-  const day = date.getDate().toString().padStart(2, '0');
-  const monthNames = [
-    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-    'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
-  ];
-  const month = monthNames[date.getMonth()];
-  const year = date.getFullYear();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const seconds = date.getSeconds().toString().padStart(2, '0');
-  
-  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-}
-
-// ✅ CORRECCIÓN: Función para obtener IP del cliente
-function getClientIP() {
-  try {
-    return Session.getTemporaryActiveUserKey() || 'unknown';
-  } catch (e) {
-    return 'unknown';
-  }
-}
-
-// ✅ CORRECCIÓN: Función para guardar logs en sheet
-function saveLogToSheet(logEntry) {
-  try {
-    const config = getConfig();
-    if (!config.sheets.logs) {
-      console.log('Sheet de logs no configurada');
-      return;
-    }
-    
-    const logSheet = SpreadsheetApp.openById(config.sheets.logs);
-    const sheet = logSheet.getSheets()[0]; // Primera hoja
-    
-    // Si está vacía, agregar headers
-    if (sheet.getLastRow() === 0) {
-      sheet.getRange(1, 1, 1, 6).setValues([['Timestamp', 'Usuario', 'SessionId', 'Acción', 'Detalles', 'IP']]);
-    }
-    
-    // Agregar nueva fila
-    sheet.appendRow([
-      logEntry.timestamp,  // Ahora en formato: 15/nov/2025 17:56:04
-      logEntry.user,
-      logEntry.sessionId,
-      logEntry.action,
-      logEntry.details,
-      logEntry.ip
-    ]);
-    
-  } catch (error) {
-    console.error('Error guardando log en sheet:', error);
-  }
-}
-
-// ✅ NUEVAS FUNCIONES AGREGADAS PARA EVITAR MEZCLA DE DATOS
-
-// ✅ NUEVA FUNCIÓN: Obtener sessionId actual (para logging)
-function getCurrentSessionId() {
-  const user = getCurrentUser();
-  return user ? user.sessionId : 'no-session';
-}
-
-// ✅ NUEVA FUNCIÓN: Verificar integridad de sesión
-function verifySessionIntegrity() {
-  try {
-    const user = getCurrentUser();
-    if (!user || !user.sessionId) {
-      return { valid: false, reason: 'No session found' };
-    }
-    
-    // Verificar que el sessionId en cache coincide
-    const userCache = CacheService.getUserCache();
-    const cachedSessionId = userCache.get('current_session');
-    
-    if (cachedSessionId !== user.sessionId) {
-      console.error('Session integrity violation detected');
-      logoutUser();
-      return { valid: false, reason: 'Session mismatch' };
-    }
-    
-    return { valid: true, sessionId: user.sessionId };
-  } catch (error) {
-    console.error('Error verifying session:', error);
-    return { valid: false, reason: error.message };
-  }
-}
-
-// ✅ NUEVA FUNCIÓN: Verificar estado del sistema
-function getSystemStatus() {
-  try {
-    const user = getCurrentUser();
-    const sessionCheck = verifySessionIntegrity();
-    const firebaseTest = FirebaseService.testConnection();
-    
-    return {
-      success: true,
-      user: {
-        email: user ? user.email : 'No autenticado',
-        sessionId: user ? user.sessionId : 'No session',
-        sessionValid: sessionCheck.valid
-      },
-      firebase: firebaseTest.connected,
-      timestamp: new Date().toISOString(),
-      sessionIntegrity: sessionCheck
-    };
-  } catch (error) {
-    return { 
-      success: false, 
-      error: error.toString(),
-      timestamp: new Date().toISOString()
-    };
   }
 }
