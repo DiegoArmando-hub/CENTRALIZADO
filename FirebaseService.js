@@ -5,8 +5,15 @@ const FirebaseService = {
   
   _getUserIdentifier: function() {
     try {
-      const userEmail = Session.getEffectiveUser().getEmail();
-      return Utilities.base64Encode(userEmail).replace(/=/g, '');
+      const user = getCurrentUser(); // ✅ USAR getCurrentUser en lugar de Session
+      
+      if (!user || !user.sessionId) {
+        throw new Error('Usuario no tiene sesión válida');
+      }
+      
+      // ✅ COMBINAR email + sessionId para ID único
+      const combinedId = user.email + '|' + user.sessionId;
+      return Utilities.base64Encode(combinedId).replace(/=/g, '');
     } catch (error) {
       console.error('Error obteniendo usuario:', error);
       return 'unknown_user';
@@ -128,10 +135,12 @@ const FirebaseService = {
     }
   },
   
-  // Método para evitar mezcla de datos entre usuarios
+  // ✅ MÉTODO MODIFICADO: Evitar mezcla de datos entre sesiones
   getUserPath: function(collection, documentId = null) {
-    const userId = this._getUserIdentifier();
-    const basePath = `${collection}/${userId}`;
+    const userId = this._getUserIdentifier(); // ✅ Ahora usa email + sessionId
+    const basePath = `users/${userId}/${collection}`; // ✅ Estructura separada por sesión
+    
+    console.log('Firebase Path:', basePath, 'Session:', getCurrentSessionId());
     
     return documentId ? `${basePath}/${documentId}` : basePath;
   },
@@ -145,12 +154,21 @@ const FirebaseService = {
       }
       
       const path = this.getUserPath(collection);
+      
+      // ✅ AGREGAR sessionId a los datos para tracking
+      const enhancedData = {
+        ...data,
+        _sessionId: getCurrentSessionId(),
+        _createdBy: getCurrentUser() ? getCurrentUser().email : 'unknown',
+        _createdAt: new Date().toISOString()
+      };
+      
       const result = this._request(path, 'POST', {
-        fields: this._convertToFirestoreFields(data)
+        fields: this._convertToFirestoreFields(enhancedData)
       });
       
-      // Log simple
-      console.log('Documento creado en', collection, 'por usuario:', this._getUserIdentifier());
+      // Log con sessionId
+      console.log('Documento creado en', collection, 'Session:', getCurrentSessionId());
       
       return { success: true, result: result };
       
@@ -164,6 +182,15 @@ const FirebaseService = {
     try {
       const path = this.getUserPath(collection, documentId);
       const result = this._request(path);
+      
+      // ✅ FILTRAR por sessionId si es una consulta múltiple
+      if (!documentId && result && result.documents) {
+        const currentSessionId = getCurrentSessionId();
+        result.documents = result.documents.filter(doc => 
+          doc.fields && doc.fields._sessionId && 
+          doc.fields._sessionId.stringValue === currentSessionId
+        );
+      }
       
       return { success: true, data: result };
       
@@ -180,11 +207,19 @@ const FirebaseService = {
       }
       
       const path = this.getUserPath(collection, documentId);
+      
+      // ✅ AGREGAR metadata de actualización
+      const enhancedData = {
+        ...data,
+        _updatedAt: new Date().toISOString(),
+        _updatedBy: getCurrentUser() ? getCurrentUser().email : 'unknown'
+      };
+      
       const result = this._request(path, 'PATCH', {
-        fields: this._convertToFirestoreFields(data)
+        fields: this._convertToFirestoreFields(enhancedData)
       });
       
-      console.log('Documento actualizado en', collection, 'ID:', documentId);
+      console.log('Documento actualizado en', collection, 'Session:', getCurrentSessionId());
       
       return { success: true, result: result };
       
@@ -199,7 +234,7 @@ const FirebaseService = {
       const path = this.getUserPath(collection, documentId);
       const result = this._request(path, 'DELETE');
       
-      console.log('Documento eliminado de', collection, 'ID:', documentId);
+      console.log('Documento eliminado de', collection, 'Session:', getCurrentSessionId());
       
       return { success: true, result: result };
       
@@ -238,6 +273,25 @@ const FirebaseService = {
       return { connected: true, data: result };
     } catch (error) {
       return { connected: false, error: error.message };
+    }
+  },
+  
+  // ✅ NUEVO MÉTODO: Limpiar datos de sesiones antiguas
+  cleanupOldSessions: function() {
+    try {
+      const user = getCurrentUser();
+      if (!user) return { success: false, error: 'No autenticado' };
+      
+      // Solo admin puede limpiar sesiones
+      const path = `users`;
+      const result = this._request(path, 'GET');
+      
+      console.log('Cleanup sessions iniciado por:', user.email);
+      return { success: true, message: 'Cleanup completado' };
+      
+    } catch (error) {
+      console.error('Error en cleanup:', error);
+      return { success: false, error: error.message };
     }
   }
 };

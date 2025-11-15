@@ -56,10 +56,16 @@ function getUserInfo() {
   return getCurrentUser();
 }
 
-// ✅ MANTENER función original para compatibilidad
+// ✅ FUNCIÓN MODIFICADA: Ahora incluye verificación de sesión
 function openModule(moduleName) {
+  // Verificar integridad de sesión primero
+  const sessionCheck = verifySessionIntegrity();
+  if (!sessionCheck.valid) {
+    throw new Error('Problema de sesión. Por favor, vuelve a iniciar sesión.');
+  }
+  
   const user = getCurrentUser();
-  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName}`);
+  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName} (Session: ${user.sessionId})`);
   
   switch(moduleName) {
     case 'CONTROL_ASISTENCIA':
@@ -75,10 +81,16 @@ function openModule(moduleName) {
   }
 }
 
-// ✅ NUEVA FUNCIÓN CON IP
+// ✅ FUNCIÓN MODIFICADA: Ahora incluye verificación de sesión
 function openModuleWithIP(moduleName, clientIP) {
+  // Verificar integridad de sesión primero
+  const sessionCheck = verifySessionIntegrity();
+  if (!sessionCheck.valid) {
+    throw new Error('Problema de sesión. Por favor, vuelve a iniciar sesión.');
+  }
+  
   const user = getCurrentUser();
-  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName} desde IP: ${clientIP}`);
+  logAction('MODULE_ACCESS', `Accedió al módulo: ${moduleName} desde IP: ${clientIP} (Session: ${user.sessionId})`);
   
   switch(moduleName) {
     case 'CONTROL_ASISTENCIA':
@@ -159,7 +171,8 @@ function validateUser(usuarioInput, password) {
           email: userEmail,
           name: row[nameIndex] || userEmail,
           alias: userAlias || userEmail.split('@')[0],
-          loginTime: new Date().toISOString()
+          loginTime: new Date().toISOString(),
+          sessionId: Utilities.getUuid() // ✅ AGREGAR sessionId ÚNICO
         };
         
         setUserSession(userData);
@@ -186,13 +199,12 @@ function logoutUser() {
   CacheService.getScriptCache().remove('current_user');
   
   if (user) {
-    logAction('LOGOUT', `Usuario ${user.email} cerró sesión`);
+    logAction('LOGOUT', `Usuario ${user.email} cerró sesión (Session: ${user.sessionId})`);
   }
   
   return { success: true };
 }
 
-// EN Code.gs - AGREGAR ESTA FUNCIÓN (al final del archivo)
 function getAppUrl() {
   try {
     return ScriptApp.getService().getUrl();
@@ -207,12 +219,14 @@ function logAction(action, details, clientIP = null) {
   try {
     const user = getCurrentUser();
     const userEmail = user ? user.email : 'No autenticado';
+    const userSessionId = user ? user.sessionId : 'no-session';
     const timestamp = formatDateCustom(new Date()); // Usar formato personalizado
     const ip = clientIP || getClientIP();
     
     const logEntry = {
       timestamp: timestamp,
       user: userEmail,
+      sessionId: userSessionId,
       action: action,
       details: details,
       ip: ip
@@ -221,7 +235,7 @@ function logAction(action, details, clientIP = null) {
     // Guardar en sheet de logs
     saveLogToSheet(logEntry);
     
-    console.log('🔐 LOG:', action, '- Usuario:', userEmail, '- IP:', ip);
+    console.log('🔐 LOG:', action, '- Usuario:', userEmail, '- Session:', userSessionId, '- IP:', ip);
     
   } catch (error) {
     console.error('Error en logAction:', error);
@@ -267,13 +281,14 @@ function saveLogToSheet(logEntry) {
     
     // Si está vacía, agregar headers
     if (sheet.getLastRow() === 0) {
-      sheet.getRange(1, 1, 1, 5).setValues([['Timestamp', 'Usuario', 'Acción', 'Detalles', 'IP']]);
+      sheet.getRange(1, 1, 1, 6).setValues([['Timestamp', 'Usuario', 'SessionId', 'Acción', 'Detalles', 'IP']]);
     }
     
     // Agregar nueva fila
     sheet.appendRow([
       logEntry.timestamp,  // Ahora en formato: 15/nov/2025 17:56:04
       logEntry.user,
+      logEntry.sessionId,
       logEntry.action,
       logEntry.details,
       logEntry.ip
@@ -281,5 +296,65 @@ function saveLogToSheet(logEntry) {
     
   } catch (error) {
     console.error('Error guardando log en sheet:', error);
+  }
+}
+
+// ✅ NUEVAS FUNCIONES AGREGADAS PARA EVITAR MEZCLA DE DATOS
+
+// ✅ NUEVA FUNCIÓN: Obtener sessionId actual (para logging)
+function getCurrentSessionId() {
+  const user = getCurrentUser();
+  return user ? user.sessionId : 'no-session';
+}
+
+// ✅ NUEVA FUNCIÓN: Verificar integridad de sesión
+function verifySessionIntegrity() {
+  try {
+    const user = getCurrentUser();
+    if (!user || !user.sessionId) {
+      return { valid: false, reason: 'No session found' };
+    }
+    
+    // Verificar que el sessionId en cache coincide
+    const userCache = CacheService.getUserCache();
+    const cachedSessionId = userCache.get('current_session');
+    
+    if (cachedSessionId !== user.sessionId) {
+      console.error('Session integrity violation detected');
+      logoutUser();
+      return { valid: false, reason: 'Session mismatch' };
+    }
+    
+    return { valid: true, sessionId: user.sessionId };
+  } catch (error) {
+    console.error('Error verifying session:', error);
+    return { valid: false, reason: error.message };
+  }
+}
+
+// ✅ NUEVA FUNCIÓN: Verificar estado del sistema
+function getSystemStatus() {
+  try {
+    const user = getCurrentUser();
+    const sessionCheck = verifySessionIntegrity();
+    const firebaseTest = FirebaseService.testConnection();
+    
+    return {
+      success: true,
+      user: {
+        email: user ? user.email : 'No autenticado',
+        sessionId: user ? user.sessionId : 'No session',
+        sessionValid: sessionCheck.valid
+      },
+      firebase: firebaseTest.connected,
+      timestamp: new Date().toISOString(),
+      sessionIntegrity: sessionCheck
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error.toString(),
+      timestamp: new Date().toISOString()
+    };
   }
 }
