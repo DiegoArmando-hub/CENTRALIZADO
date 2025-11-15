@@ -58,7 +58,7 @@ function cleanupOldRateLimiters() {
 // =======================================================
 
 function procesarArchivoCargado(datosFormulario) {
-  verificarAutorizacion();
+  // verificarAutorizacion(); // Eliminado a petición del usuario
   const contenido = datosFormulario.excelContent;
   if (!contenido) throw new Error("No se ha cargado ningún archivo.");
 
@@ -225,7 +225,7 @@ function finalizarRevisionYGuardar(
   observacionesTexto,
   datosCursoFirebase
 ) {
-  verificarAutorizacion();
+  // verificarAutorizacion(); // Eliminado a petición del usuario
   const idCarpetaRaiz = PropertiesService.getScriptProperties().getProperty('CARPETA_AULA_VIRTUAL');
   if (!idCarpetaRaiz) throw new Error('No se encontró la propiedad CARPETA_AULA_VIRTUAL. Configúrala en Propiedades del proyecto.');
   if (!idCurso || !convocatoria) throw new Error('Faltan parámetros: idCurso y/o convocatoria.');

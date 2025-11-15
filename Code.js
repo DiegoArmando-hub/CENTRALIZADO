@@ -1,3 +1,4 @@
+
 function doGet() {
   if (!isUserAuthenticated()) {
     return renderLoginPage();

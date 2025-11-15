@@ -62,6 +62,14 @@ var FirebaseService = {
       },
       
       _getUserCollection: function(collection) {
+        // Colecciones que son globales y no deben estar anidadas bajo un usuario
+        const globalCollections = ['db_cursos', 'db_usuarios', 'db_config'];
+        
+        if (globalCollections.includes(collection)) {
+          return collection;
+        }
+        
+        // Para colecciones específicas de usuario (como logs, etc.)
         const userHash = this._getUserHash();
         return `users/${userHash}/${collection}`;
       },
@@ -122,7 +130,9 @@ var FirebaseService = {
       // READ - Obtener documento
       get: function(collection, documentId) {
         const userCollection = this._getUserCollection(collection);
-        const result = this._request(`${userCollection}/${documentId}`, 'GET');
+        // ✅ CORRECCIÓN: Codificar el ID del documento para manejar caracteres especiales como '/'
+        const safeDocumentId = encodeURIComponent(documentId);
+        const result = this._request(`${userCollection}/${safeDocumentId}`, 'GET');
         return this._convertFromFirestore(result);
       },
       
