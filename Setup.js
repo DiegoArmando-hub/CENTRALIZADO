@@ -1,7 +1,3 @@
-/**
- * ARCHIVO DE PRUEBAS - Test.gs
- */
-
 function testSystem() {
   try {
     const config = getConfig();

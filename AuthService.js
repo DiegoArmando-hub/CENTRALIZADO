@@ -1,18 +1,25 @@
-// AuthService.gs - Versión final unificada
 function validateUser(usuarioInput, password) {
   try {
+    console.log('🔐 Intentando login para:', usuarioInput);
+    
     if (!usuarioInput || !password) {
+      console.log('❌ Campos vacíos');
       return { success: false, message: 'Usuario y contraseña son requeridos' };
     }
     
     const config = getConfig();
     if (!config.sheets.usuarios) {
+      console.log('❌ Sheet de usuarios no configurada');
       return { success: false, message: 'Sheet de usuarios no configurada' };
     }
     
+    console.log('📋 Abriendo sheet de usuarios...');
     const userSheet = SpreadsheetApp.openById(config.sheets.usuarios);
     const data = userSheet.getDataRange().getValues();
     const headers = data[0];
+    
+    console.log('📊 Filas en sheet:', data.length);
+    console.log('🔤 Headers:', headers);
     
     const emailIndex = headers.indexOf('correo');
     const passwordIndex = headers.indexOf('contraseña');
@@ -25,14 +32,20 @@ function validateUser(usuarioInput, password) {
     const useNameIndex = nameIndex !== -1 ? nameIndex : 0;
     const useAliasIndex = aliasIndex !== -1 ? aliasIndex : 3;
     
+    console.log('🔍 Índices - Email:', useEmailIndex, 'Password:', usePasswordIndex, 'Nombre:', useNameIndex, 'Alias:', useAliasIndex);
+    
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const userEmail = row[useEmailIndex];
       const userAlias = row[useAliasIndex];
       const userPassword = row[usePasswordIndex];
       
+      console.log(`👤 Fila ${i}: Email:${userEmail}, Alias:${userAlias}, Password:${userPassword}`);
+      
       // ✅ ACEPTA ALIAS O CORREO
       if ((userEmail === usuarioInput || userAlias === usuarioInput) && userPassword === password) {
+        console.log('✅ Credenciales correctas para:', usuarioInput);
+        
         const userData = {
           email: userEmail,
           name: row[useNameIndex] || 'Usuario',
@@ -41,21 +54,24 @@ function validateUser(usuarioInput, password) {
           sessionId: Utilities.getUuid()
         };
         
+        console.log('💾 Guardando sesión...');
         // Guardar sesión
         const sessionResult = setUserSession(userData);
         if (sessionResult.success) {
-          console.log('Login exitoso para:', usuarioInput);
+          console.log('✅ Login exitoso para:', usuarioInput);
           return { success: true, user: userData };
         } else {
+          console.log('❌ Error creando sesión');
           return { success: false, message: 'Error creando sesión' };
         }
       }
     }
     
+    console.log('❌ Credenciales incorrectas');
     return { success: false, message: 'Credenciales incorrectas' };
     
   } catch (error) {
-    console.error('Error en validateUser:', error);
+    console.error('💥 Error en validateUser:', error);
     return { success: false, message: 'Error del sistema durante la autenticación' };
   }
 }

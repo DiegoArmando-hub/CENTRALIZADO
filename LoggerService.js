@@ -2,13 +2,14 @@ function logAction(action, details, clientIP) {
   try {
     console.log('Guardando log - IP:', clientIP);
     
-    const user = getCurrentUser() || { email: 'unknown' };
+    const user = getCurrentUser() || { email: 'unknown', alias: 'unknown' };
     const now = new Date();
     const timestamp = formatDateLegible(now);
     
     const logEntry = {
       timestamp: timestamp,
       user: user.email,
+      alias: user.alias,
       action: action,
       details: details,
       ip: clientIP || getClientIP(),
@@ -58,14 +59,15 @@ function logToSheet(logEntry) {
     const sheet = logSheet.getSheets()[0];
     
     if (sheet.getLastRow() === 0) {
-      sheet.getRange(1, 1, 1, 5).setValues([[
-        'Timestamp', 'Usuario', 'Acción', 'Detalles', 'IP'
+      sheet.getRange(1, 1, 1, 6).setValues([[
+        'Timestamp', 'Usuario', 'Alias', 'Acción', 'Detalles', 'IP'
       ]]);
     }
     
     sheet.appendRow([
       logEntry.timestamp,
       logEntry.user,
+      logEntry.alias,
       logEntry.action,
       logEntry.details,
       logEntry.ip

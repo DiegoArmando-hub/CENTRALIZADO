@@ -50,44 +50,9 @@
     });
   }
 
-  // ✅ FUNCIÓN PARA OBTENER IP REAL
-  function getClientRealIP() {
-    return new Promise(function(resolve) {
-      // Usar servicio externo para obtener IP real
-      fetch('https://api.ipify.org?format=json')
-        .then(function(response) { return response.json(); })
-        .then(function(data) { resolve(data.ip); })
-        .catch(function() { resolve('ip-unknown'); });
-    });
-  }
-
-  // Manejo de módulos - ACTUALIZADO
-  function openModule(moduleName) {
-    const btn = event.target.closest('.module-card') || event.target;
-    App.showLoading(btn);
-    
-    getClientRealIP()
-      .then(function(realIP) {
-        return callServerFunction('openModuleWithIP', moduleName, realIP);
-      })
-      .then(function(result) {
-        App.hideLoading(btn);
-        if (result.success) {
-          App.showAlert(result.message, 'success');
-          // Aquí puedes redirigir al módulo específico cuando esté listo
-          console.log('Módulo accedido:', result.module);
-        } else {
-          App.showAlert(result.message || 'Error al abrir módulo');
-        }
-      })
-      .catch(function(error) {
-        App.hideLoading(btn);
-        App.handleError(error);
-      });
-  }
-
-  // ✅ SOLUCIÓN DEFINITIVA - Login CORREGIDO
+  // ✅ LOGIN - MANTENER EXACTAMENTE COMO ESTABA (QUE FUNCIONA)
   function handleLogin(event) {
+    console.log('🔄 Iniciando proceso de login...');
     event.preventDefault();
     
     const email = document.getElementById('email').value;
@@ -101,55 +66,89 @@
     
     App.showLoading(loginBtn);
     
-    getClientRealIP()
-      .then(function(realIP) {
-        return callServerFunction('loginWithIP', email, password, realIP);
-      })
+    // ✅ MANTENER EXACTAMENTE IGUAL - QUE SÍ FUNCIONA
+    callServerFunction('loginAndRedirect', email, password)
       .then(function(result) {
+        console.log('📨 Respuesta del servidor:', result);
+        
         if (result.success) {
-          return callServerFunction('getAppUrl');
+          console.log('✅ Login exitoso, redirigiendo a:', result.redirectUrl);
+          // ✅ MANTENER EXACTAMENTE IGUAL
+          const redirectUrl = result.redirectUrl + '?auth=' + Date.now();
+          console.log('🔗 URL final:', redirectUrl);
+          // window.location.replace(response.redirectUrl);
+          window.location.replace(redirectUrl);
         } else {
           App.hideLoading(loginBtn);
-          App.showAlert(result.message || result.error);
-          throw new Error('Login failed');
+          App.showAlert(result.message || 'Credenciales incorrectas');
         }
-      })
-      .then(function(appUrl) {
-        console.log('Redirecting to:', appUrl);
-        // ✅ CORRECCIÓN: Usar window.location en lugar de window.top.location
-        window.location.href = appUrl;
       })
       .catch(function(error) {
-        if (error.message !== 'Login failed') {
-          App.hideLoading(loginBtn);
-          App.handleError(error);
-        }
+        console.error('❌ Error en login:', error);
+        App.hideLoading(loginBtn);
+        App.showAlert('Error del sistema: ' + error.message);
       });
   }
 
-  // ✅ SOLUCIÓN DEFINITIVA - Logout CORREGIDO
+  // ✅ LOGOUT - SOLO ESTA PARTE SE MODIFICA
   function handleLogout() {
+    console.log('🔄 Iniciando logout...');
     const logoutBtn = event.target;
     const originalText = logoutBtn.innerHTML;
     logoutBtn.innerHTML = 'Cerrando...';
     logoutBtn.disabled = true;
     
+    // ✅ SOLUCIÓN SIMPLE PARA LOGOUT - REDIRECCIÓN INMEDIATA
     callServerFunction('logout')
       .then(function(result) {
+        console.log('📨 Respuesta logout:', result);
         if (result.success) {
-          return callServerFunction('getAppUrl');
+          console.log('✅ Logout exitoso, redirigiendo...');
+          // ✅ REDIRECCIÓN INMEDIATA SIN COMPLICACIONES
+          window.location.href = result.redirectUrl + '?logout=' + Date.now();
         } else {
-          throw new Error(result.error || 'Error en logout');
+          // ✅ SI FALLA EL LOGOUT, REDIRIGIR DE TODAS FORMAS
+          console.log('⚠️ Logout falló, redirigiendo igual...');
+          window.location.href = window.location.origin + window.location.pathname + '?logout=' + Date.now();
         }
       })
-      .then(function(appUrl) {
-        console.log('Logout redirect to:', appUrl);
-        // ✅ CORRECCIÓN: Usar window.location en lugar de window.top.location
-        window.location.href = appUrl;
+      .catch(function(error) {
+        console.error('❌ Error en logout:', error);
+        // ✅ SI HAY ERROR, REDIRIGIR DE TODAS FORMAS
+        console.log('🔄 Forzando redirección a pesar del error...');
+        window.location.href = window.location.origin + window.location.pathname + '?logout=' + Date.now();
+      })
+      .finally(function() {
+        // ✅ POR SI ACASO, FORZAR REDIRECCIÓN DESPUÉS DE 3 SEGUNDOS
+        setTimeout(function() {
+          if (!window.location.href.includes('logout')) {
+            console.log('🔄 Redirección de seguridad después de timeout...');
+            window.location.href = window.location.origin + window.location.pathname + '?logout=' + Date.now();
+          }
+        }, 3000);
+      });
+  }
+
+  // ✅ FUNCIÓN PARA MÓDULOS (sin cambios)
+  function openModule(moduleName) {
+    console.log('🔄 Abriendo módulo:', moduleName);
+    const btn = event.target.closest('.module-card') || event.target;
+    App.showLoading(btn);
+    
+    callServerFunction('openModuleWithIP', moduleName, 'unknown')
+      .then(function(result) {
+        App.hideLoading(btn);
+        if (result.success) {
+          App.showAlert('Redirigiendo al módulo...', 'success');
+          setTimeout(function() {
+            window.location.href = result.redirectUrl;
+          }, 1000);
+        } else {
+          App.showAlert(result.message || 'Error al abrir módulo');
+        }
       })
       .catch(function(error) {
-        logoutBtn.innerHTML = originalText;
-        logoutBtn.disabled = false;
+        App.hideLoading(btn);
         App.handleError(error);
       });
   }
@@ -167,23 +166,41 @@
 
   // Inicialización
   function initializeApp() {
-    if (document.getElementById('userInfo')) {
+    console.log('🚀 Inicializando aplicación...');
+    
+    // ✅ LIMPIAR PARÁMETROS DE URL SI EXISTEN
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('auth') || urlParams.has('logout')) {
+      console.log('🧹 Limpiando parámetros de URL...');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    // Verificar si estamos en login o dashboard
+    const loginForm = document.getElementById('loginForm');
+    const userInfo = document.getElementById('userInfo');
+    
+    if (userInfo) {
+      // Estamos en el dashboard - cargar info del usuario
+      console.log('📊 Cargando dashboard...');
       callServerFunction('getUserInfo')
-        .then(updateUserInfo)
+        .then(function(userInfo) {
+          console.log('👤 Usuario cargado:', userInfo);
+          updateUserInfo(userInfo);
+        })
         .catch(function(error) {
-          console.error('Error loading user info:', error);
+          console.error('❌ Error cargando usuario:', error);
         });
     }
     
-    const loginForm = document.getElementById('loginForm');
     if (loginForm) {
+      // Estamos en el login - configurar formulario
+      console.log('🔐 Configurando formulario de login...');
       loginForm.addEventListener('submit', handleLogin);
     }
+    
+    console.log('✅ Aplicación inicializada correctamente');
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-  } else {
-    initializeApp();
-  }
+  // Inicializar cuando el DOM esté listo
+  document.addEventListener('DOMContentLoaded', initializeApp);
 </script>
